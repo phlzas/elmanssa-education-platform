@@ -57,7 +57,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', className = '' }) => {
   return (
     <div className={`logo-wrapper inline-flex items-center ${className}`}>
       <img
-        src="/assets/logo.png"
+        src="/assets/logo.svg"
         alt="Elmanssa - المنصة التعليمية"
         className={`${sizeClasses[size]} w-auto object-contain`}
         onError={() => setImageError(true)}

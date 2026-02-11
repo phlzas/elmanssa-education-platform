@@ -1,25 +1,46 @@
 
 import React from 'react';
+import { Page } from '../App';
 import Logo from './Logo';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  onNavigate?: (page: Page) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   const currentYear = new Date().getFullYear();
 
-  const footerLinks = {
+  const footerLinks: { [key: string]: { title: string; links: { name: string; page: Page }[] } } = {
     platform: {
       title: 'المنصة',
-      links: ['الرئيسية', 'الدورات', 'البث المباشر', 'الأسعار']
+      links: [
+        { name: 'الرئيسية', page: 'home' },
+        { name: 'الدورات', page: 'courses' },
+        { name: 'البث المباشر', page: 'live-stream' },
+        { name: 'الأسعار', page: 'pricing' },
+      ]
     },
     company: {
       title: 'الشركة',
-      links: ['من نحن', 'فريق العمل', 'المدونة', 'تواصل معنا']
+      links: [
+        { name: 'من نحن', page: 'about' },
+        // { name: 'فريق العمل', page: 'about' }, // Removed for now or link to about section
+        { name: 'المدونة', page: 'blog' },
+        { name: 'تواصل معنا', page: 'about' },
+      ]
     },
     support: {
       title: 'الدعم',
-      links: ['مركز المساعدة', 'الأسئلة الشائعة', 'سياسة الخصوصية', 'الشروط والأحكام']
+      links: [
+        { name: 'مركز المساعدة', page: 'support' },
+        // { name: 'الأسئلة الشائعة', page: 'support' },
+        { name: 'سياسة الخصوصية', page: 'privacy' },
+        { name: 'الشروط والأحكام', page: 'privacy' },
+      ]
     }
   };
 
+  // ... (Social links remain sames)
   const socialLinks = [
     {
       name: 'Twitter',
@@ -98,14 +119,14 @@ const Footer: React.FC = () => {
               <h3 className="font-bold text-[#034289] text-lg mb-5">{section.title}</h3>
               <ul className="space-y-3">
                 {section.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                  <li key={link.name}>
+                    <button
+                      onClick={() => onNavigate && onNavigate(link.page)}
                       className="text-[#034289]/70 hover:text-[#4F8751] transition-colors duration-300 inline-flex items-center gap-2 group"
                     >
                       <span className="w-0 h-0.5 bg-[#4F8751] group-hover:w-3 transition-all duration-300" />
-                      {link}
-                    </a>
+                      {link.name}
+                    </button>
                   </li>
                 ))}
               </ul>
