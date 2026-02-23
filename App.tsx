@@ -9,6 +9,7 @@ import Stats from './components/Stats';
 import Features from './components/Features';
 import PopularCourses from './components/PopularCourses';
 import TeacherCTA from './components/TeacherCTA';
+import Testimonials from './components/Testimonials';
 import LoginPage from './components/LoginPage';
 import CourseDetailPage from './components/CourseDetailPage';
 import AboutPage from './components/AboutPage';
@@ -18,8 +19,13 @@ import PricingPage from './components/PricingPage';
 import BlogPage from './components/BlogPage';
 import SupportPage from './components/SupportPage';
 import PrivacyPage from './components/PrivacyPage';
+import StudentDashboard from './components/StudentDashboard';
+import ContactPage from './components/ContactPage';
+import InstructorProfile from './components/InstructorProfile';
+import CheckoutPage from './components/CheckoutPage';
+import PaymentSuccessPage from './components/PaymentSuccessPage';
 
-export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy';
+export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success';
 export type AccountType = 'student' | 'teacher';
 
 const App: React.FC = () => {
@@ -31,7 +37,7 @@ const App: React.FC = () => {
     if (page === 'signup' && payload?.accountType) {
       setInitialAccountType(payload.accountType);
     }
-    if (page === 'course-detail' && payload?.courseId) {
+    if (payload?.courseId) {
       setSelectedCourseId(payload.courseId);
     }
     setCurrentPage(page);
@@ -47,6 +53,7 @@ const App: React.FC = () => {
             <Stats />
             <Features />
             <PopularCourses onNavigate={navigateTo} />
+            <Testimonials />
             <TeacherCTA onNavigate={navigateTo} />
           </>
         );
@@ -74,6 +81,24 @@ const App: React.FC = () => {
         return <SupportPage onNavigate={navigateTo} />;
       case 'privacy':
         return <PrivacyPage onNavigate={navigateTo} />;
+      case 'dashboard':
+        return <StudentDashboard onNavigate={navigateTo} />;
+      case 'contact':
+        return <ContactPage onNavigate={navigateTo} />;
+      case 'instructor':
+        return <InstructorProfile onNavigate={navigateTo} />;
+      case 'checkout':
+        return selectedCourseId ? (
+          <CheckoutPage courseId={selectedCourseId} onNavigate={navigateTo} />
+        ) : (
+          <Hero onNavigate={navigateTo} />
+        );
+      case 'payment-success':
+        return selectedCourseId ? (
+          <PaymentSuccessPage courseId={selectedCourseId} onNavigate={navigateTo} />
+        ) : (
+          <Hero onNavigate={navigateTo} />
+        );
       case 'about':
         return <AboutPage onNavigate={navigateTo} />;
       default:

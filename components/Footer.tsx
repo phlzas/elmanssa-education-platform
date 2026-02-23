@@ -26,7 +26,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         { name: 'من نحن', page: 'about' },
         // { name: 'فريق العمل', page: 'about' }, // Removed for now or link to about section
         { name: 'المدونة', page: 'blog' },
-        { name: 'تواصل معنا', page: 'about' },
+        { name: 'تواصل معنا', page: 'contact' },
       ]
     },
     support: {

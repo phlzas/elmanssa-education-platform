@@ -276,7 +276,16 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                         )}
                                     </div>
 
-                                    <button className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mb-3 hover:shadow-glow transition-all">
+                                    <button
+                                        onClick={() => {
+                                            if (course.price === 'free') {
+                                                onNavigate('dashboard');
+                                            } else {
+                                                onNavigate('checkout' as any, { courseId: course.id });
+                                            }
+                                        }}
+                                        className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mb-3 hover:shadow-glow transition-all"
+                                    >
                                         {course.price === 'free' ? 'سجل مجاناً الآن' : 'اشترِ الآن'}
                                     </button>
 
