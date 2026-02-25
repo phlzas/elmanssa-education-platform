@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Page } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LoginPageProps {
   onNavigate: (page: Page) => void;
@@ -8,11 +9,30 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError('يرجى ملء جميع الحقول');
+      return;
+    }
+    setError('');
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    try {
+      await login(email, password);
+      // Redirect based on role — the auth context determines role from email
+      const isTeacher = email.includes('teacher') || email.includes('معلم') || email.includes('prof');
+      onNavigate(isTeacher ? 'teacher-dashboard' : 'dashboard');
+    } catch {
+      setError('حدث خطأ أثناء تسجيل الدخول');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,6 +58,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <p className="text-[#034289]/60">مرحباً بعودتك! قم بتسجيل الدخول للمتابعة</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center font-medium animate-fade-in">
+              {error}
+            </div>
+          )}
+
           <form className="space-y-5" onSubmit={handleSubmit}>
             {/* Email Field */}
             <div>
@@ -53,6 +80,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 <input
                   type="email"
                   id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
                   className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
                 />
@@ -78,6 +107,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 <input
                   type="password"
                   id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
                 />

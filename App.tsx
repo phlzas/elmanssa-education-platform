@@ -24,8 +24,10 @@ import ContactPage from './components/ContactPage';
 import InstructorProfile from './components/InstructorProfile';
 import CheckoutPage from './components/CheckoutPage';
 import PaymentSuccessPage from './components/PaymentSuccessPage';
+import VideoViewer from './components/VideoViewer';
+import TeacherDashboard from './components/TeacherDashboard';
 
-export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success';
+export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'video-viewer' | 'teacher-dashboard';
 export type AccountType = 'student' | 'teacher';
 
 const App: React.FC = () => {
@@ -83,10 +85,14 @@ const App: React.FC = () => {
         return <PrivacyPage onNavigate={navigateTo} />;
       case 'dashboard':
         return <StudentDashboard onNavigate={navigateTo} />;
+      case 'video-viewer':
+        return <VideoViewer onNavigate={navigateTo} />;
       case 'contact':
         return <ContactPage onNavigate={navigateTo} />;
       case 'instructor':
         return <InstructorProfile onNavigate={navigateTo} />;
+      case 'teacher-dashboard':
+        return <TeacherDashboard onNavigate={navigateTo} />;
       case 'checkout':
         return selectedCourseId ? (
           <CheckoutPage courseId={selectedCourseId} onNavigate={navigateTo} />
@@ -108,11 +114,15 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-[#FEFEFE] min-h-screen flex flex-col text-[#034289] overflow-x-hidden">
-      <Header onNavigate={navigateTo} currentPage={currentPage} />
-      <main className="flex-grow pt-[82px]">
+      {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && (
+        <Header onNavigate={navigateTo} currentPage={currentPage} />
+      )}
+      <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' ? 'pt-[82px]' : ''}`}>
         {renderPage()}
       </main>
-      <Footer onNavigate={navigateTo} />
+      {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && (
+        <Footer onNavigate={navigateTo} />
+      )}
     </div>
   );
 };

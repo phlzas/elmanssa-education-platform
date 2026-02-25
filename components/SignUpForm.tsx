@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Page, AccountType } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SignUpFormProps {
   initialAccountType?: AccountType;
@@ -10,18 +11,52 @@ interface SignUpFormProps {
 const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student', onNavigate }) => {
   const [accountType, setAccountType] = useState<AccountType>(initialAccountType);
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const { signup } = useAuth();
 
   useEffect(() => {
     setAccountType(initialAccountType);
   }, [initialAccountType]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const getPasswordStrength = () => {
+    if (password.length === 0) return 0;
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    return score;
+  };
+
+  const strengthLabels = ['', 'ضعيفة', 'متوسطة', 'جيدة', 'قوية'];
+  const strengthColors = ['', 'bg-red-400', 'bg-yellow-400', 'bg-[#4F8751]/60', 'bg-[#4F8751]'];
+  const strength = getPasswordStrength();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fullName || !email || !password) {
+      setError('يرجى ملء جميع الحقول');
+      return;
+    }
+    setError('');
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await signup(fullName, email, password, accountType);
+      // Redirect based on account type
+      if (accountType === 'student') {
+        onNavigate('dashboard');
+      } else {
+        onNavigate('teacher-dashboard');
+      }
+    } catch {
+      setError('حدث خطأ أثناء إنشاء الحساب');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -47,27 +82,12 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
             <p className="text-[#034289]/60">انضم إلى مجتمعنا التعليمي اليوم</p>
           </div>
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            {[1, 2].map((s) => (
-              <div key={s} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${step >= s
-                    ? 'bg-[#4F8751] text-white'
-                    : 'bg-[#D2E1D9] text-[#034289]/50'
-                  }`}>
-                  {step > s ? (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  ) : s}
-                </div>
-                {s < 2 && (
-                  <div className={`w-16 h-1 mx-2 rounded transition-all duration-300 ${step > s ? 'bg-[#4F8751]' : 'bg-[#D2E1D9]'
-                    }`} />
-                )}
-              </div>
-            ))}
-          </div>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center font-medium animate-fade-in">
+              {error}
+            </div>
+          )}
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {/* Account Type Selector */}
@@ -78,8 +98,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                   type="button"
                   onClick={() => setAccountType('student')}
                   className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${accountType === 'student'
-                      ? 'border-[#4F8751] bg-[#4F8751]/5'
-                      : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
+                    ? 'border-[#4F8751] bg-[#4F8751]/5'
+                    : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
                     }`}
                 >
                   <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${accountType === 'student' ? 'bg-[#4F8751]' : 'bg-[#D2E1D9]'
@@ -106,8 +126,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                   type="button"
                   onClick={() => setAccountType('teacher')}
                   className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${accountType === 'teacher'
-                      ? 'border-[#4F8751] bg-[#4F8751]/5'
-                      : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
+                    ? 'border-[#4F8751] bg-[#4F8751]/5'
+                    : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
                     }`}
                 >
                   <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${accountType === 'teacher' ? 'bg-[#4F8751]' : 'bg-[#D2E1D9]'
@@ -145,6 +165,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 <input
                   type="text"
                   id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   placeholder="أدخل اسمك الكامل"
                   className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
                 />
@@ -165,6 +187,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 <input
                   type="email"
                   id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
                   className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
                 />
@@ -185,18 +209,25 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 <input
                   type="password"
                   id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
                 />
               </div>
               {/* Password strength indicator */}
               <div className="flex gap-1 mt-2">
-                <div className="h-1 flex-1 bg-[#4F8751] rounded" />
-                <div className="h-1 flex-1 bg-[#4F8751]/60 rounded" />
-                <div className="h-1 flex-1 bg-[#D2E1D9] rounded" />
-                <div className="h-1 flex-1 bg-[#D2E1D9] rounded" />
+                {[1, 2, 3, 4].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1 flex-1 rounded transition-all duration-300 ${strength >= level ? strengthColors[strength] : 'bg-[#D2E1D9]'
+                      }`}
+                  />
+                ))}
               </div>
-              <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور متوسطة القوة</p>
+              {password.length > 0 && (
+                <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور {strengthLabels[strength]}</p>
+              )}
             </div>
 
             {/* Terms */}
