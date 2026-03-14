@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getStats } from '../api/content.api';
 
 interface StatItemProps {
   value: number;
@@ -92,6 +93,25 @@ const StatItem: React.FC<StatItemProps> = ({ value, suffix = '', prefix = '', la
 };
 
 const Stats: React.FC = () => {
+  const [students, setStudents] = useState(10000);
+  const [teachers, setTeachers] = useState(500);
+  const [courses, setCourses] = useState(1200);
+  const [satisfaction, setSatisfaction] = useState(95);
+
+  useEffect(() => {
+    getStats()
+      .then((json) => {
+        const data = json?.data || json;
+        if (data) {
+          if (data.totalStudents) setStudents(data.totalStudents);
+          if (data.totalTeachers) setTeachers(data.totalTeachers);
+          if (data.totalCourses) setCourses(data.totalCourses);
+          if (data.averageRating) setSatisfaction(Math.round(data.averageRating * 20));
+        }
+      })
+      .catch(() => { /* keep fallback values */ });
+  }, []);
+
   return (
     <section className="relative py-16 md:py-24 overflow-hidden">
       {/* Background */}
@@ -114,7 +134,7 @@ const Stats: React.FC = () => {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           <StatItem
-            value={10000}
+            value={students}
             prefix="+"
             label="طالب نشط"
             delay={0}
@@ -125,7 +145,7 @@ const Stats: React.FC = () => {
             }
           />
           <StatItem
-            value={500}
+            value={teachers}
             prefix="+"
             label="مدرس محترف"
             delay={100}
@@ -136,7 +156,7 @@ const Stats: React.FC = () => {
             }
           />
           <StatItem
-            value={1200}
+            value={courses}
             prefix="+"
             label="دورة تعليمية"
             delay={200}
@@ -147,7 +167,7 @@ const Stats: React.FC = () => {
             }
           />
           <StatItem
-            value={95}
+            value={satisfaction}
             suffix="%"
             label="رضا الطلاب"
             delay={300}

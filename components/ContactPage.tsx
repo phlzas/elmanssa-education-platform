@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Page } from '../App';
+import { sendContactMessage } from '../api/content.api';
 
 interface ContactPageProps {
     onNavigate: (page: Page) => void;
@@ -16,10 +17,16 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
     });
     const [submitted, setSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSubmitted(true);
-        setTimeout(() => setSubmitted(false), 5000);
+        try {
+            await sendContactMessage(formData);
+            setSubmitted(true);
+            setTimeout(() => setSubmitted(false), 5000);
+        } catch (error) {
+            console.error('Submission failed', error);
+            // optionally handle visual error
+        }
     };
 
     const contactMethods = [
@@ -152,8 +159,8 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                                                     type="button"
                                                     onClick={() => setFormData({ ...formData, type: type.value })}
                                                     className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${formData.type === type.value
-                                                            ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
-                                                            : 'bg-[#F0F6F2] text-[#034289]/60 hover:bg-[#D2E1D9] hover:text-[#034289]'
+                                                        ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
+                                                        : 'bg-[#F0F6F2] text-[#034289]/60 hover:bg-[#D2E1D9] hover:text-[#034289]'
                                                         }`}
                                                 >
                                                     {type.label}

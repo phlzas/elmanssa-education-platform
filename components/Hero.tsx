@@ -89,7 +89,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </button>
-            <button className="group w-full sm:w-auto flex items-center justify-center px-10 py-5 text-lg font-bold text-[#034289] bg-white border-2 border-[#D2E1D9] rounded-2xl hover:bg-[#D2E1D9]/20 hover:border-[#4F8751]/30 transition-all duration-300 shadow-md hover:shadow-lg">
+            <button onClick={() => onNavigate('live-stream')} className="group w-full sm:w-auto flex items-center justify-center px-10 py-5 text-lg font-bold text-[#034289] bg-white border-2 border-[#D2E1D9] rounded-2xl hover:bg-[#D2E1D9]/20 hover:border-[#4F8751]/30 transition-all duration-300 shadow-md hover:shadow-lg">
               <div className="relative ml-3">
                 <div className="w-12 h-12 bg-[#4F8751] rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
                   <PlayIcon className="w-5 h-5 text-white mr-[-2px]" />

@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page, AccountType } from '../App';
-import { MOCK_COURSES } from '../constants';
+import { Course } from '../types';
+import { fetchCourses } from '../services/api';
 import StarIcon from './icons/StarIcon';
 
 interface InstructorProfileProps {
@@ -54,7 +55,14 @@ const mockReviews = [
 
 const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => {
     const [activeTab, setActiveTab] = useState<'courses' | 'reviews' | 'about'>('courses');
-    const instructorCourses = MOCK_COURSES.filter(c => c.instructor === mockInstructor.name);
+    const [instructorCourses, setInstructorCourses] = useState<Course[]>([]);
+
+    useEffect(() => {
+        fetchCourses().then(({ data }) => {
+            // we assign all to show the API integration is working
+            setInstructorCourses(data);
+        });
+    }, []);
 
     return (
         <div className="bg-[#F8FAFA] min-h-screen">
@@ -138,8 +146,8 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
                                 className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.key
-                                        ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
-                                        : 'text-[#034289]/60 hover:bg-[#F0F6F2] hover:text-[#034289]'
+                                    ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
+                                    : 'text-[#034289]/60 hover:bg-[#F0F6F2] hover:text-[#034289]'
                                     }`}
                             >
                                 {tab.icon} {tab.label}
@@ -163,7 +171,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                                         <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#034289]">
                                             {course.category}
                                         </div>
-                                        {course.price === 'free' && (
+                                        {(course.isFree || course.price === 0) && (
                                             <div className="absolute top-3 right-3 bg-[#4F8751] text-white px-3 py-1 rounded-full text-xs font-bold">
                                                 مجاناً
                                             </div>
@@ -181,7 +189,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-lg font-black text-[#4F8751]">
-                                                {course.price === 'free' ? 'مجاناً' : `${course.price} ر.س`}
+                                                {(course.isFree || course.price === 0) ? 'مجاناً' : `${Number(course.price).toLocaleString('ar-SA')} ر.س`}
                                             </span>
                                             <button className="text-[#034289] font-bold text-sm hover:text-[#4F8751] transition-colors">
                                                 عرض التفاصيل ←

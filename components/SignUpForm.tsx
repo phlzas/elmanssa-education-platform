@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Page, AccountType } from '../App';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface SignUpFormProps {
   initialAccountType?: AccountType;
@@ -15,12 +16,26 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [nationalId, setNationalId] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [yearsOfExperience, setYearsOfExperience] = useState<string>('');
+  const [specialization, setSpecialization] = useState('');
+  const [bio, setBio] = useState('');
+  const [cvUrl, setCvUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
 
-  const { signup } = useAuth();
+  const { signup, signupTeacher, user, isLoggedIn } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     setAccountType(initialAccountType);
   }, [initialAccountType]);
+
+  useEffect(() => {
+    if (user && isLoggedIn) {
+      showToast(`مرحباً بك ${user.name}! تم إنشاء حسابك بنجاح`, 'success');
+    }
+  }, [user, isLoggedIn, showToast]);
 
   const getPasswordStrength = () => {
     if (password.length === 0) return 0;
@@ -42,18 +57,39 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
       setError('يرجى ملء جميع الحقول');
       return;
     }
+    if (password.length < 8) {
+      setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      return;
+    }
     setError('');
     setIsLoading(true);
     try {
-      await signup(fullName, email, password, accountType);
-      // Redirect based on account type
-      if (accountType === 'student') {
-        onNavigate('dashboard');
+      if (accountType === 'teacher') {
+        const years = Number(yearsOfExperience || '0');
+        if (!nationalId || !phoneNumber || isNaN(years)) {
+          throw new Error('يرجى إدخال الرقم القومي ورقم الهاتف والخبرة بالشهور/السنوات');
+        }
+        if (years < 0 || years > 100) {
+          throw new Error('عدد سنوات الخبرة يجب أن يكون بين 0 و 100');
+        }
+        await signupTeacher({
+          name: fullName,
+          email,
+          password,
+          nationalId,
+          phoneNumber,
+          yearsOfExperience: years,
+          specialization,
+          bio,
+          cvUrl,
+          avatarUrl
+        });
       } else {
-        onNavigate('teacher-dashboard');
+        await signup(fullName, email, password, accountType);
       }
-    } catch {
-      setError('حدث خطأ أثناء إنشاء الحساب');
+      // App.tsx auto-redirects via useEffect on auth state change
+    } catch (err: any) {
+      setError(err?.message || 'حدث خطأ أثناء إنشاء الحساب');
     } finally {
       setIsLoading(false);
     }
@@ -229,6 +265,83 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور {strengthLabels[strength]}</p>
               )}
             </div>
+
+            {accountType === 'teacher' && (
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">الرقم القومي</label>
+                  <input
+                    type="text"
+                    value={nationalId}
+                    onChange={(e) => setNationalId(e.target.value)}
+                    placeholder="أدخل رقمك القومي"
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">رقم الهاتف</label>
+                  <input
+                    type="text"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="01xxxxxxxxx"
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">سنوات الخبرة</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={yearsOfExperience}
+                    onChange={(e) => setYearsOfExperience(e.target.value)}
+                    placeholder="عدد السنوات (0-100)"
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">التخصص</label>
+                  <input
+                    type="text"
+                    value={specialization}
+                    onChange={(e) => setSpecialization(e.target.value)}
+                    placeholder="مثال: برمجة، رياضيات"
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">نبذة</label>
+                  <textarea
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="نبذة مختصرة عنك"
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">رابط السيرة الذاتية</label>
+                  <input
+                    type="url"
+                    value={cvUrl}
+                    onChange={(e) => setCvUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#034289] mb-2">رابط الصورة الشخصية</label>
+                  <input
+                    type="url"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Terms */}
             <div className="flex items-start gap-3">

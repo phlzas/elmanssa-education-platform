@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { MOCK_COURSES } from '../constants';
+import { fetchCourses } from '../services/api';
+import { Course } from '../types';
 import CourseCard from './CourseCard';
 import { Page } from '../App';
 import ArrowLeftIcon from './icons/ArrowLeftIcon';
@@ -11,9 +12,11 @@ interface PopularCoursesProps {
 
 const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    fetchCourses().then(result => setCourses(result.data || []));
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -71,7 +74,7 @@ const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
 
         {/* Courses Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {MOCK_COURSES.slice(0, 3).map((course, index) => (
+          {courses.slice(0, 3).map((course, index) => (
             <div
               key={course.id}
               className={`transform transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'

@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
-import { MOCK_COURSES, FILTER_LEVELS, FILTER_PRICES } from '../constants';
+import React, { useState, useEffect } from 'react';
+import { FILTER_LEVELS, FILTER_PRICES } from '../constants';
 import CourseCard from './CourseCard';
+import { fetchCourses } from '../services/api';
+import { Course } from '../types';
 
 import { Page } from '../App';
 
@@ -12,8 +14,23 @@ interface CoursesPageProps {
 const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFiltersOnMobile, setShowFiltersOnMobile] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const categories = [...new Set(MOCK_COURSES.map(c => c.category))];
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const { data, error } = await fetchCourses();
+      if (!isMounted) return;
+      if (error) setError(error);
+      setCourses(data);
+      setIsLoading(false);
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  const categories = [...new Set(courses.map(c => c.category))];
 
   return (
     <div className="relative">
@@ -46,8 +63,8 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pr-14 pl-4 py-4 bg-white border-2 border-[#D2E1D9] rounded-2xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 shadow-lg transition-all duration-300 text-lg"
               />
-              <button className="absolute left-2 top-1/4 -translate-y-1/6 btn-primary px-6 py-2 text-white font-bold rounded-xl">
-                <span className="relative z-10">ب حث</span>
+              <button className="absolute left-2 top-1/2 -translate-y-1/2 btn-primary px-6 py-2 text-white font-bold rounded-xl">
+                <span className="relative z-10">بحث</span>
               </button>
             </div>
           </div>
@@ -176,7 +193,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate }) => {
             {/* Results Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
               <p className="text-[#034289]/70">
-                عرض <span className="font-bold text-[#034289]">{MOCK_COURSES.length}</span> دورة
+                عرض <span className="font-bold text-[#034289]">{courses.length}</span> دورة
               </p>
               <div className="flex items-center gap-3">
                 <span className="text-[#034289]/60 text-sm">ترتيب حسب:</span>
@@ -191,18 +208,26 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {MOCK_COURSES.map((course, index) => (
-                <div
-                  key={course.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <CourseCard
-                    course={course}
-                    onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.id })}
-                  />
-                </div>
-              ))}
+              {isLoading ? (
+                <p className="text-center w-full col-span-3 py-10 text-[#034289]/60">جاري تحميل الدورات...</p>
+              ) : error ? (
+                <p className="text-center w-full col-span-3 py-10 text-red-600">حدث خطأ أثناء تحميل الدورات: {error}</p>
+              ) : courses.length > 0 ? (
+                courses.map((course, index) => (
+                  <div
+                    key={course.id}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <CourseCard
+                      course={course}
+                      onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.id })}
+                    />
+                  </div>
+                ))
+              ) : (
+                <p className="text-center w-full col-span-3 py-10 text-[#034289]/60">لا توجد دورات مطابقة للبحث</p>
+              )}
             </div>
 
             {/* Pagination */}

@@ -1,24 +1,43 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
 import { Subject, Level, Lecture, TeacherNavItem } from './teacher/types';
-import { initialSubjects, mockStudents, mockActivities } from './teacher/mockData';
+import { subjectIcons } from './teacher/mockData';
+import {
+    fetchTeacherSubjects, fetchTeacherStats, fetchTeacherStudents, pingTeacherAuth,
+    createTeacherSubject, updateTeacherSubject, deleteTeacherSubject,
+    publishTeacherSubject, createCourseWithCurriculum
+} from '../services/api';
 import TeacherSidebar from './teacher/TeacherSidebar';
 import SubjectModal from './teacher/SubjectModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface TeacherDashboardProps {
-    onNavigate: (page: Page) => void;
+    onNavigate: (page: Page, payload?: { tab?: string }) => void;
+    initialTab?: string;
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
+const TOKEN_KEY = 'elmanssa_auth_token';
+
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initialTab }) => {
     const { user } = useAuth();
-    const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
-    const [activeNav, setActiveNav] = useState<TeacherNavItem>('dashboard');
+    const { showToast } = useToast();
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [activeNav, setActiveNav] = useState<TeacherNavItem>(
+        (initialTab as TeacherNavItem) || 'dashboard'
+    );
     const [mobileSidebar, setMobileSidebar] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createStep, setCreateStep] = useState(1);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+
+    // API-loaded data
+    const [apiStats, setApiStats] = useState<any>(null);
+    const [apiStudents, setApiStudents] = useState<any[]>([]);
+    const [apiActivities, setApiActivities] = useState<any[]>([]);
+    const [studentsLoading, setStudentsLoading] = useState(false);
 
     // New subject form state
     const [newSubjectName, setNewSubjectName] = useState('');
@@ -28,10 +47,93 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
         { id: 'new-l1', name: 'المستوى 1', lectures: [] }
     ]);
 
-    // Computed stats
-    const totalStudents = subjects.reduce((a, s) => a + s.students, 0);
-    const totalLectures = subjects.reduce((a, s) => a + s.levels.reduce((b, l) => b + l.lectures.length, 0), 0);
-    const publishedCount = subjects.filter(s => s.status === 'published').length;
+    // Load subjects + stats from API
+    useEffect(() => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) { setIsLoadingData(false); return; }
+
+        const loadData = async () => {
+            setIsLoadingData(true);
+            try {
+                const ok = await pingTeacherAuth(token);
+                if (!ok) {
+                    onNavigate('login');
+                    return;
+                }
+                const [subjectsData, statsData] = await Promise.all([
+                    fetchTeacherSubjects(token),
+                    fetchTeacherStats(token)
+                ]);
+
+                // Map API subjects
+                if (subjectsData && Array.isArray(subjectsData)) {
+                    const mapped: Subject[] = subjectsData.map((s: any) => ({
+                        id: s.id?.toString() || `subj-${Date.now()}`,
+                        name: s.name || s.title || '',
+                        description: s.description || '',
+                        icon: s.icon || '📚',
+                        levels: (s.levels || []).map((l: any) => ({
+                            id: l.id?.toString() || `lev-${Date.now()}`,
+                            name: l.name || '',
+                            lectures: (l.lectures || []).map((lec: any) => ({
+                                id: lec.id?.toString() || `lec-${Date.now()}`,
+                                title: lec.title || '',
+                                duration: lec.duration || '00:00',
+                                videoUrl: lec.videoUrl || '',
+                            })),
+                        })),
+                        students: s.studentsCount || 0,
+                        status: (s.status === 'published' || s.status === 'Published') ? 'published' : 'draft',
+                        createdAt: s.createdAt ? new Date(s.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    }));
+                    setSubjects(mapped);
+                }
+
+                // Map API stats
+                if (statsData) {
+                    setApiStats(statsData);
+                    if (statsData.recentActivities && Array.isArray(statsData.recentActivities)) {
+                        setApiActivities(statsData.recentActivities.map((a: any) => ({
+                            text: a.description || a.text || '',
+                            time: a.time || a.createdAt || '',
+                            icon: a.icon || '📌',
+                        })));
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading teacher data', err);
+            }
+            setIsLoadingData(false);
+        };
+
+        loadData();
+    }, []);
+
+    // Load students when switching to students tab
+    useEffect(() => {
+        if (activeNav === 'students') {
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (!token) return;
+            setStudentsLoading(true);
+            fetchTeacherStudents(token).then((data: any) => {
+                if (Array.isArray(data)) {
+                    setApiStudents(data.map((st: any) => ({
+                        name: st.name || 'طالب',
+                        avatar: st.avatarUrl ? '🧑' : '🧑',
+                        email: st.email || '',
+                        id: st.id,
+                    })));
+                }
+                setStudentsLoading(false);
+            }).catch(() => setStudentsLoading(false));
+        }
+    }, [activeNav]);
+
+    // Computed stats (from API when available, otherwise computed from subjects)
+    const totalStudents = apiStats?.totalStudents ?? subjects.reduce((a, s) => a + s.students, 0);
+    const totalLectures = apiStats?.totalLectures ?? subjects.reduce((a, s) => a + s.levels.reduce((b, l) => b + l.lectures.length, 0), 0);
+    const publishedCount = apiStats?.publishedCount ?? subjects.filter(s => s.status === 'published').length;
+    const totalSubjects = apiStats?.totalSubjects ?? subjects.length;
 
     const resetForm = () => {
         setNewSubjectName('');
@@ -79,29 +181,166 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
             return l;
         }));
     };
-    const saveSubject = () => {
-        if (editingSubject) {
-            setSubjects(subjects.map(s =>
-                s.id === editingSubject.id
-                    ? { ...s, name: newSubjectName, description: newSubjectDesc, icon: newSubjectIcon, levels: newLevels }
-                    : s
-            ));
-        } else {
-            const newSubject: Subject = {
-                id: `subj-${Date.now()}`, name: newSubjectName, description: newSubjectDesc, icon: newSubjectIcon,
-                levels: newLevels, students: 0, status: 'draft', createdAt: new Date().toISOString().split('T')[0],
-            };
-            setSubjects([...subjects, newSubject]);
+
+    const saveSubject = async () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) return;
+
+        try {
+            if (editingSubject) {
+                // Update via API (keep existing logic)
+                await updateTeacherSubject(token, parseInt(editingSubject.id), {
+                    title: newSubjectName,
+                    description: newSubjectDesc,
+                });
+                setSubjects(subjects.map(s =>
+                    s.id === editingSubject.id
+                        ? { ...s, name: newSubjectName, description: newSubjectDesc, icon: newSubjectIcon, levels: newLevels }
+                        : s
+                ));
+                showToast('تم تحديث المادة بنجاح', 'success');
+            } else {
+                // NEW: Create course with complete curriculum in one API call
+                
+                // Calculate total duration from all lectures
+                const totalDuration = newLevels.reduce((total, level) => {
+                    return total + level.lectures.reduce((sum, lec) => {
+                        // Parse duration formats: "45 min", "1:30:00", "90"
+                        const durationStr = lec.duration.trim();
+                        
+                        // Format: "HH:MM:SS" or "MM:SS"
+                        if (durationStr.includes(':')) {
+                            const parts = durationStr.split(':').map(p => parseInt(p) || 0);
+                            if (parts.length === 3) {
+                                return sum + (parts[0] * 60 + parts[1]); // hours to minutes + minutes
+                            } else if (parts.length === 2) {
+                                return sum + parts[0]; // just minutes
+                            }
+                        }
+                        
+                        // Format: "45 min" or "45"
+                        const match = durationStr.match(/(\d+)/);
+                        return sum + (match ? parseInt(match[1]) : 0);
+                    }, 0);
+                }, 0);
+
+                // Build the request payload
+                const courseData = {
+                    title: newSubjectName,
+                    description: newSubjectDesc || undefined,
+                    category: 'عام', // Default category
+                    duration: Math.max(1, totalDuration), // Ensure at least 1 hour
+                    level: 'مبتدئ', // Default level
+                    language: 'العربية',
+                    price: 0, // Free by default
+                    imageUrl: undefined,
+                    sections: newLevels.map((level, index) => ({
+                        title: level.name,
+                        sortOrder: index,
+                        lectures: level.lectures
+                            .filter(lec => lec.title.trim()) // Only include lectures with titles
+                            .map((lec, lecIndex) => ({
+                                title: lec.title,
+                                duration: lec.duration || undefined,
+                                videoUrl: lec.videoUrl || undefined,
+                                sortOrder: lecIndex,
+                                isPreview: lecIndex === 0, // First lecture as preview
+                            })),
+                    })).filter(section => section.lectures.length > 0), // Only include sections with lectures
+                };
+
+                // Call the new API endpoint
+                const created = await createCourseWithCurriculum(token, courseData);
+                
+                // Map API response to local Subject format
+                const newSubject: Subject = {
+                    id: created.id?.toString() || `subj-${Date.now()}`,
+                    name: created.title,
+                    description: created.description || '',
+                    icon: newSubjectIcon,
+                    levels: (created.sections || []).map((s: any) => ({
+                        id: s.id?.toString() || `lev-${Date.now()}`,
+                        name: s.title,
+                        lectures: (s.lectures || []).map((l: any) => ({
+                            id: l.id?.toString() || `lec-${Date.now()}`,
+                            title: l.title,
+                            duration: l.duration || '00:00',
+                            videoUrl: l.videoUrl || '',
+                        })),
+                    })),
+                    students: created.studentsCount || 0,
+                    status: created.status === 'published' ? 'published' : 'draft',
+                    createdAt: created.createdAt 
+                        ? new Date(created.createdAt).toISOString().split('T')[0] 
+                        : new Date().toISOString().split('T')[0],
+                };
+                
+                setSubjects([...subjects, newSubject]);
+                showToast('تم إنشاء المادة بنجاح ✨', 'success');
+            }
+        } catch (err: any) {
+            console.error('Error saving subject', err);
+            const errorMessage = err.message || 'حدث خطأ أثناء حفظ المادة';
+            showToast(errorMessage, 'error');
         }
         setShowCreateModal(false);
         resetForm();
     };
-    const deleteSubject = (id: string) => { setSubjects(subjects.filter(s => s.id !== id)); };
-    const togglePublish = (id: string) => {
-        setSubjects(subjects.map(s => s.id === id ? { ...s, status: s.status === 'published' ? 'draft' : 'published' } : s));
+
+    const deleteSubject = async (id: string) => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+            try {
+                await deleteTeacherSubject(token, parseInt(id));
+                showToast('تم حذف المادة بنجاح', 'success');
+            } catch (err) {
+                console.error('Error deleting subject', err);
+                showToast('حدث خطأ أثناء حذف المادة', 'error');
+            }
+        }
+        setSubjects(subjects.filter(s => s.id !== id));
+    };
+
+    const togglePublish = async (id: string) => {
+        const subject = subjects.find(s => s.id === id);
+        if (!subject) return;
+        const newStatus = subject.status === 'published' ? 'draft' : 'published';
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+            try {
+                await publishTeacherSubject(token, parseInt(id), newStatus);
+                showToast(newStatus === 'published' ? 'تم نشر المادة بنجاح' : 'تم إيقاف نشر المادة', 'success');
+            } catch (err) {
+                console.error('Error toggling publish', err);
+                showToast('حدث خطأ', 'error');
+            }
+        }
+        setSubjects(subjects.map(s => s.id === id ? { ...s, status: newStatus as 'published' | 'draft' } : s));
     };
 
     const teacherName = user?.name || 'المدرس';
+
+    // Loading state
+    if (isLoadingData) {
+        return (
+            <div dir="rtl" style={{
+                display: 'flex', minHeight: '100vh', background: '#0a1628',
+                fontFamily: "'Cairo', sans-serif", alignItems: 'center', justifyContent: 'center',
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                        width: '52px', height: '52px', borderRadius: '50%',
+                        border: '4px solid rgba(245, 158, 11, 0.15)',
+                        borderTopColor: '#f59e0b',
+                        animation: 'teacherSpin 0.8s linear infinite',
+                        margin: '0 auto 20px',
+                    }} />
+                    <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 600 }}>جاري تحميل البيانات...</div>
+                </div>
+                <style>{`@keyframes teacherSpin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
 
     return (
         <div dir="rtl" style={{
@@ -159,22 +398,50 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                             مرحبا، أ. {teacherName} <span style={{ fontSize: '22px' }}>👋</span>
                         </h1>
                     </div>
-                    <button onClick={openCreateModal} style={{
-                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                        border: 'none', borderRadius: '12px', padding: '10px 20px',
-                        color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        fontFamily: "'Cairo', sans-serif",
-                        boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)', transition: 'all 0.3s',
-                    }}
-                        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.4)'; }}
-                        onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)'; }}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        إنشاء مادة جديدة
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Back to site */}
+                        <button
+                            onClick={() => onNavigate('home')}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '10px',
+                                padding: '10px 14px',
+                                color: '#94a3b8',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                fontFamily: "'Cairo', sans-serif",
+                                transition: 'all 0.2s',
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#e2e8f0'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#94a3b8'; }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
+                                <polyline points="9,22 9,12 15,12 15,22" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            الموقع الرئيسي
+                        </button>
+                        <button onClick={openCreateModal} style={{
+                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                            border: 'none', borderRadius: '12px', padding: '10px 20px',
+                            color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            fontFamily: "'Cairo', sans-serif",
+                            boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)', transition: 'all 0.3s',
+                        }}
+                            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.4)'; }}
+                            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.3)'; }}
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            إنشاء مادة جديدة
+                        </button>
+                    </div>
                 </div>
 
                 {/* Page Content */}
@@ -185,7 +452,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                         {/* Stats */}
                         <div className="teacher-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
                             {[
-                                { label: 'عدد المواد', value: subjects.length.toString(), icon: '📚', color: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.2)', valueColor: '#f59e0b' },
+                                { label: 'عدد المواد', value: totalSubjects.toString(), icon: '📚', color: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.2)', valueColor: '#f59e0b' },
                                 { label: 'إجمالي الطلاب', value: totalStudents.toString(), icon: '👥', color: 'rgba(14, 165, 233, 0.15)', borderColor: 'rgba(14, 165, 233, 0.2)', valueColor: '#38bdf8' },
                                 { label: 'المحاضرات', value: totalLectures.toString(), icon: '🎬', color: 'rgba(168, 85, 247, 0.15)', borderColor: 'rgba(168, 85, 247, 0.2)', valueColor: '#a855f7' },
                                 { label: 'منشورة', value: publishedCount.toString(), icon: '✅', color: 'rgba(34, 197, 94, 0.15)', borderColor: 'rgba(34, 197, 94, 0.2)', valueColor: '#22c55e' },
@@ -292,56 +559,55 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                         </div>
                     </>)}
 
-                    {/* STUDENTS */}
+                    {/* STUDENTS — from API */}
                     {activeNav === 'students' && (
                         <div style={{ animation: 'fadeIn 0.3s ease' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                                 <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0', margin: 0 }}>👥 طلابي</h2>
-                                <span style={{ fontSize: '13px', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '6px 14px', borderRadius: '10px' }}>{totalStudents} طالب</span>
+                                <span style={{ fontSize: '13px', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '6px 14px', borderRadius: '10px' }}>{apiStudents.length} طالب</span>
                             </div>
-                            <div style={{ marginBottom: '16px' }}>
-                                <input placeholder="🔍 ابحث عن طالب..." style={{ width: '100%', maxWidth: '400px', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none' }} />
-                            </div>
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', overflow: 'hidden' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', gap: '12px' }}>
-                                    {['الطالب', 'المادة', 'المستوى', 'التقدم', 'الحالة'].map(h => (
-                                        <span key={h} style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>{h}</span>
+                            {studentsLoading ? (
+                                <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>جاري تحميل الطلاب...</div>
+                            ) : apiStudents.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                                    <div style={{ fontSize: '60px', marginBottom: '16px' }}>📭</div>
+                                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 8px' }}>لا يوجد طلاب بعد</h3>
+                                    <p style={{ fontSize: '14px', color: '#64748b' }}>سيظهر الطلاب هنا بعد تسجيلهم في موادك</p>
+                                </div>
+                            ) : (
+                                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', overflow: 'hidden' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', gap: '12px' }}>
+                                        {['الطالب', 'البريد الإلكتروني'].map(h => (
+                                            <span key={h} style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>{h}</span>
+                                        ))}
+                                    </div>
+                                    {apiStudents.map((st, idx) => (
+                                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center', gap: '12px', transition: 'background 0.15s' }}
+                                            onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{st.avatar}</div>
+                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#e2e8f0' }}>{st.name}</div>
+                                            </div>
+                                            <span style={{ fontSize: '13px', color: '#94a3b8' }}>{st.email}</span>
+                                        </div>
                                     ))}
                                 </div>
-                                {mockStudents.map((st, idx) => (
-                                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center', gap: '12px', transition: 'background 0.15s' }}
-                                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{st.avatar}</div>
-                                            <div><div style={{ fontSize: '14px', fontWeight: 600, color: '#e2e8f0' }}>{st.name}</div><div style={{ fontSize: '11px', color: '#475569' }}>{st.email}</div></div>
-                                        </div>
-                                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>{st.subject}</span>
-                                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>{st.level}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                                <div style={{ height: '100%', width: `${st.progress}%`, borderRadius: '3px', background: st.progress >= 80 ? '#22c55e' : st.progress >= 40 ? '#f59e0b' : '#38bdf8' }} />
-                                            </div>
-                                            <span style={{ fontSize: '11px', color: '#64748b', minWidth: '30px' }}>{st.progress}%</span>
-                                        </div>
-                                        <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '8px', background: st.status === 'مكتمل' ? 'rgba(34,197,94,0.1)' : st.status === 'جديد' ? 'rgba(56,189,248,0.1)' : 'rgba(245,158,11,0.1)', color: st.status === 'مكتمل' ? '#22c55e' : st.status === 'جديد' ? '#38bdf8' : '#f59e0b', display: 'inline-block' }}>{st.status}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            )}
                         </div>
                     )}
 
-                    {/* ANALYTICS */}
+                    {/* ANALYTICS — from API stats */}
                     {activeNav === 'analytics' && (
                         <div style={{ animation: 'fadeIn 0.3s ease' }}>
                             <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0', margin: '0 0 20px' }}>📈 الإحصائيات</h2>
                             <div className="teacher-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
                                 {[
-                                    { label: 'معدل الإكمال', value: '72%', icon: '🎯', bg: 'rgba(34,197,94,0.12)', bc: 'rgba(34,197,94,0.2)', vc: '#22c55e' },
-                                    { label: 'ساعات المشاهدة', value: '1,240', icon: '⏱️', bg: 'rgba(14,165,233,0.12)', bc: 'rgba(14,165,233,0.2)', vc: '#38bdf8' },
-                                    { label: 'متوسط التقييم', value: '4.8', icon: '⭐', bg: 'rgba(245,158,11,0.12)', bc: 'rgba(245,158,11,0.2)', vc: '#f59e0b' },
-                                    { label: 'الإيرادات (ر.س)', value: '12,450', icon: '💰', bg: 'rgba(168,85,247,0.12)', bc: 'rgba(168,85,247,0.2)', vc: '#a855f7' },
+                                    { label: 'عدد المواد', value: totalSubjects.toString(), icon: '📚', bg: 'rgba(245,158,11,0.12)', bc: 'rgba(245,158,11,0.2)', vc: '#f59e0b' },
+                                    { label: 'إجمالي الطلاب', value: totalStudents.toString(), icon: '👥', bg: 'rgba(14,165,233,0.12)', bc: 'rgba(14,165,233,0.2)', vc: '#38bdf8' },
+                                    { label: 'المحاضرات', value: totalLectures.toString(), icon: '🎬', bg: 'rgba(168,85,247,0.12)', bc: 'rgba(168,85,247,0.2)', vc: '#a855f7' },
+                                    { label: 'منشورة', value: publishedCount.toString(), icon: '✅', bg: 'rgba(34,197,94,0.12)', bc: 'rgba(34,197,94,0.2)', vc: '#22c55e' },
                                 ].map((s, i) => (
                                     <div key={i} style={{ background: s.bg, border: `1px solid ${s.bc}`, borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                                         <div style={{ fontSize: '28px' }}>{s.icon}</div>
@@ -352,7 +618,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px' }}>
                                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 16px' }}>📊 أداء المواد</h3>
-                                    {subjects.map(sub => {
+                                    {subjects.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '14px' }}>لا توجد مواد بعد</div>
+                                    ) : subjects.map(sub => {
                                         const lecs = sub.levels.reduce((a, l) => a + l.lectures.length, 0);
                                         const pct = Math.min(100, Math.round((sub.students / (totalStudents || 1)) * 100));
                                         return (
@@ -369,20 +637,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                                     })}
                                 </div>
                                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px' }}>
-                                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 16px' }}>📅 النشاط الشهري</h3>
-                                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '160px', paddingBottom: '24px' }}>
-                                        {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 95, 68].map((v, i) => (
-                                            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                                <div style={{ width: '100%', height: `${v}%`, borderRadius: '6px', background: i === 11 ? 'linear-gradient(180deg, #f59e0b, #d97706)' : 'rgba(245,158,11,0.15)' }} />
-                                                <span style={{ fontSize: '9px', color: '#475569' }}>{['ين', 'فب', 'مر', 'أب', 'مي', 'يو', 'يل', 'أغ', 'سب', 'أك', 'نو', 'دس'][i]}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px' }}>
                                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 16px' }}>🕐 آخر الأنشطة</h3>
-                                    {mockActivities.map((a, i) => (
-                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                                    {apiActivities.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '14px' }}>لا توجد أنشطة حديثة</div>
+                                    ) : apiActivities.map((a, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderBottom: i < apiActivities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
                                             <span style={{ fontSize: '18px' }}>{a.icon}</span>
                                             <span style={{ flex: 1, fontSize: '13px', color: '#cbd5e1' }}>{a.text}</span>
                                             <span style={{ fontSize: '11px', color: '#475569', flexShrink: 0 }}>{a.time}</span>
@@ -401,7 +660,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                                 <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', boxShadow: '0 4px 20px rgba(245,158,11,0.3)' }}>👨‍🏫</div>
                                 <div>
                                     <div style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0' }}>{teacherName}</div>
-                                    <div style={{ fontSize: '13px', color: '#64748b' }}>مدرس معتمد • انضم يناير 2026</div>
+                                    <div style={{ fontSize: '13px', color: '#64748b' }}>مدرس معتمد</div>
                                     <button style={{ marginTop: '8px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', padding: '6px 14px', color: '#f59e0b', fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: "'Cairo', sans-serif" }}>تغيير الصورة</button>
                                 </div>
                             </div>
@@ -409,8 +668,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                                 {[
                                     { label: 'الاسم الكامل', value: user?.name || 'المدرس', type: 'text' },
                                     { label: 'البريد الإلكتروني', value: user?.email || '', type: 'email' },
-                                    { label: 'رقم الهاتف', value: '+966 50 123 4567', type: 'tel' },
-                                    { label: 'التخصص', value: 'كيمياء وفيزياء', type: 'text' },
                                 ].map((f, i) => (
                                     <div key={i}>
                                         <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>{f.label}</label>
@@ -419,7 +676,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate }) => {
                                 ))}
                                 <div>
                                     <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>نبذة عنك</label>
-                                    <textarea defaultValue="مدرس كيمياء وفيزياء بخبرة 10 سنوات. شغوف بتبسيط المفاهيم العلمية." rows={3} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none', resize: 'vertical' as const }} />
+                                    <textarea defaultValue="" rows={3} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none', resize: 'vertical' as const }} />
                                 </div>
                                 <button style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '12px', padding: '12px 28px', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Cairo', sans-serif", boxShadow: '0 4px 15px rgba(245,158,11,0.3)' }}>💾 حفظ التغييرات</button>
                             </div>

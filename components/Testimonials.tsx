@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { getTestimonials } from '../api/content.api';
 
 interface Testimonial {
   id: number;
@@ -11,7 +11,7 @@ interface Testimonial {
   course: string;
 }
 
-const testimonials: Testimonial[] = [
+const fallbackTestimonials: Testimonial[] = [
   {
     id: 1,
     name: 'أحمد الشمري',
@@ -75,19 +75,28 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
 );
 
 const Testimonials: React.FC = () => {
+  const [data, setData] = useState<Testimonial[]>(fallbackTestimonials);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    getTestimonials().then((res) => {
+      if (res && res.length > 0) {
+        setData(res);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setActiveIndex((prev) => (prev + 1) % testimonials.length);
+        setActiveIndex((prev) => (prev + 1) % data.length);
         setIsAnimating(false);
       }, 400);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [data.length]);
 
   const goTo = (index: number) => {
     if (index === activeIndex) return;
@@ -121,9 +130,8 @@ const Testimonials: React.FC = () => {
         {/* Featured Testimonial */}
         <div className="max-w-4xl mx-auto mb-12">
           <div
-            className={`bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-[#D2E1D9]/50 relative transition-all duration-400 ${
-              isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
-            }`}
+            className={`bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-[#D2E1D9]/50 relative transition-all duration-400 ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
+              }`}
           >
             {/* Quote Mark */}
             <div className="absolute top-6 right-8 text-8xl font-serif text-[#D2E1D9]/60 leading-none pointer-events-none select-none">
@@ -136,8 +144,8 @@ const Testimonials: React.FC = () => {
                 <div className="relative">
                   <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-[#4F8751]/20 shadow-lg">
                     <img
-                      src={testimonials[activeIndex].avatar}
-                      alt={testimonials[activeIndex].name}
+                      src={data[activeIndex]?.avatar || 'https://i.pravatar.cc/150'}
+                      alt={data[activeIndex]?.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -151,22 +159,22 @@ const Testimonials: React.FC = () => {
 
               {/* Content */}
               <div className="flex-1 text-center md:text-right">
-                <StarRating rating={testimonials[activeIndex].rating} />
+                <StarRating rating={data[activeIndex]?.rating || 5} />
                 <p className="text-lg md:text-xl text-[#034289]/80 leading-relaxed mt-4 mb-6">
-                  {testimonials[activeIndex].text}
+                  {data[activeIndex]?.text}
                 </p>
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4">
                   <div>
                     <h4 className="text-lg font-bold text-[#034289]">
-                      {testimonials[activeIndex].name}
+                      {data[activeIndex]?.name}
                     </h4>
                     <p className="text-[#4F8751] font-medium text-sm">
-                      {testimonials[activeIndex].role}
+                      {data[activeIndex]?.role}
                     </p>
                   </div>
                   <span className="hidden md:block text-[#D2E1D9]">|</span>
                   <span className="text-sm text-[#034289]/50 bg-[#F0F6F2] px-3 py-1 rounded-full">
-                    🎓 {testimonials[activeIndex].course}
+                    🎓 {data[activeIndex]?.course}
                   </span>
                 </div>
               </div>
@@ -176,17 +184,16 @@ const Testimonials: React.FC = () => {
 
         {/* Navigation Dots & Mini Avatars */}
         <div className="flex items-center justify-center gap-4">
-          {testimonials.map((t, index) => (
+          {data.map((t, index) => (
             <button
-              key={t.id}
+              key={t.id || index}
               onClick={() => goTo(index)}
-              className={`relative transition-all duration-300 rounded-full overflow-hidden ${
-                index === activeIndex
-                  ? 'w-12 h-12 ring-3 ring-[#4F8751] shadow-lg scale-110'
-                  : 'w-10 h-10 ring-2 ring-[#D2E1D9] opacity-50 hover:opacity-80 hover:scale-105'
-              }`}
+              className={`relative transition-all duration-300 rounded-full overflow-hidden ${index === activeIndex
+                ? 'w-12 h-12 ring-3 ring-[#4F8751] shadow-lg scale-110'
+                : 'w-10 h-10 ring-2 ring-[#D2E1D9] opacity-50 hover:opacity-80 hover:scale-105'
+                }`}
             >
-              <img src={t.avatar} alt={t.name} className="w-full h-full object-cover" />
+              <img src={t.avatar || 'https://i.pravatar.cc/150'} alt={t.name} className="w-full h-full object-cover" />
             </button>
           ))}
         </div>

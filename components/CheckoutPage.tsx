@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { MOCK_COURSES } from '../constants';
+import { fetchCourseById, createOrder, validateCoupon } from '../services/api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
 import CheckBadgeIcon from './icons/CheckBadgeIcon';
@@ -23,6 +23,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const [couponCode, setCouponCode] = useState('');
     const [couponApplied, setCouponApplied] = useState(false);
     const [couponError, setCouponError] = useState('');
+    const [discountAmount, setDiscountAmount] = useState(0);
     const [animating, setAnimating] = useState(false);
 
     // Form fields
@@ -42,15 +43,14 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        const foundCourse = MOCK_COURSES.find(c => c.id === courseId);
-        setCourse(foundCourse || null);
-        window.scrollTo(0, 0);
+        fetchCourseById(courseId).then(({ data }) => {
+            setCourse(data);
+            window.scrollTo(0, 0);
+        });
     }, [courseId]);
 
-    const discount = couponApplied ? 0.15 : 0;
     const originalPrice = typeof course?.price === 'number' ? course.price : 0;
-    const discountAmount = originalPrice * discount;
-    const finalPrice = originalPrice - discountAmount;
+    const finalPrice = Math.max(0, originalPrice - discountAmount);
 
     const handleInputChange = (field: string, value: string) => {
         let formatted = value;
@@ -81,13 +81,25 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
         }
     };
 
-    const applyCoupon = () => {
-        if (couponCode.toLowerCase() === 'elmanssa15' || couponCode.toLowerCase() === 'welcome') {
-            setCouponApplied(true);
+    const applyCoupon = async () => {
+        try {
             setCouponError('');
-        } else {
-            setCouponError('كود الخصم غير صالح');
+            const data = await validateCoupon(couponCode, courseId);
+            if (data?.isValid) {
+                setCouponApplied(true);
+                // Assuming validateCoupon might return the percentage/amount or we just calculate it.
+                // For now let's just do a 15% discount if valid.
+                const discAmt = data.discountAmount || (originalPrice * ((data.discountPercentage || 15) / 100));
+                setDiscountAmount(discAmt);
+            } else {
+                setCouponError(data?.message || 'كود الخصم غير صالح أو منتهي');
+                setCouponApplied(false);
+                setDiscountAmount(0);
+            }
+        } catch (error) {
+            setCouponError('تعذر التحقق من التخفيض');
             setCouponApplied(false);
+            setDiscountAmount(0);
         }
     };
 
@@ -132,10 +144,25 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const handleSubmit = async () => {
         if (!validateStep(2)) return;
         setIsProcessing(true);
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        setIsProcessing(false);
-        onNavigate('payment-success' as Page, { courseId });
+        try {
+            const token = localStorage.getItem('token') || undefined;
+            const orderData = {
+                courseId: courseId,
+                paymentMethod: paymentMethod,
+                couponCode: couponApplied ? couponCode : undefined,
+                billingFullName: formData.fullName,
+                billingEmail: formData.email,
+                billingPhone: formData.phone
+            };
+
+            await createOrder(orderData, token);
+            setIsProcessing(false);
+            onNavigate('payment-success' as Page, { courseId });
+        } catch (error) {
+            setIsProcessing(false);
+            console.error('Order creation failed:', error);
+            alert('تعذر إنشاء الطلب، يرجى المحاولة مرة أخرى.');
+        }
     };
 
     // Detect card type
@@ -155,7 +182,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
         );
     }
 
-    if (course.price === 'free') {
+    if (course.isFree || course.price === 0) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#F8FAFA] py-20 px-4">
                 <div className="bg-white rounded-3xl shadow-xl p-10 text-center max-w-md animate-scale-in">
@@ -216,8 +243,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                             <React.Fragment key={num}>
                                 <div className="flex flex-col items-center gap-1.5">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ${step >= num
-                                            ? 'bg-[#4F8751] text-white shadow-lg shadow-[#4F8751]/30'
-                                            : 'bg-white/10 text-white/50'
+                                        ? 'bg-[#4F8751] text-white shadow-lg shadow-[#4F8751]/30'
+                                        : 'bg-white/10 text-white/50'
                                         }`}>
                                         {step > num ? (
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -334,8 +361,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                         <button
                                             onClick={() => setPaymentMethod('card')}
                                             className={`relative p-4 rounded-xl border-2 transition-all text-center group ${paymentMethod === 'card'
-                                                    ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
-                                                    : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
+                                                ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
+                                                : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
                                                 }`}
                                         >
                                             {paymentMethod === 'card' && (
@@ -353,8 +380,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                         <button
                                             onClick={() => setPaymentMethod('wallet')}
                                             className={`relative p-4 rounded-xl border-2 transition-all text-center group ${paymentMethod === 'wallet'
-                                                    ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
-                                                    : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
+                                                ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
+                                                : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
                                                 }`}
                                         >
                                             {paymentMethod === 'wallet' && (
@@ -372,8 +399,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                         <button
                                             onClick={() => setPaymentMethod('bank')}
                                             className={`relative p-4 rounded-xl border-2 transition-all text-center group ${paymentMethod === 'bank'
-                                                    ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
-                                                    : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
+                                                ? 'border-[#4F8751] bg-[#4F8751]/5 shadow-md'
+                                                : 'border-[#D2E1D9] hover:border-[#4F8751]/50 hover:bg-[#F8FAFA]'
                                                 }`}
                                         >
                                             {paymentMethod === 'bank' && (
@@ -505,8 +532,8 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                                             key={wallet.id}
                                                             onClick={() => handleInputChange('walletType', wallet.id)}
                                                             className={`p-3 rounded-xl border-2 text-center transition-all ${formData.walletType === wallet.id
-                                                                    ? 'border-[#4F8751] bg-[#4F8751]/5'
-                                                                    : 'border-[#D2E1D9] hover:border-[#4F8751]/30'
+                                                                ? 'border-[#4F8751] bg-[#4F8751]/5'
+                                                                : 'border-[#D2E1D9] hover:border-[#4F8751]/30'
                                                                 }`}
                                                         >
                                                             <div className="w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: wallet.color + '15' }}>
@@ -661,7 +688,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                             <StarIcon className="w-3.5 h-3.5 fill-current" />
                                             <span>{course.rating}</span>
                                         </div>
-                                        <span>{course.instructor}</span>
+                                        <span>{course.instructorName ?? 'معلم'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -673,7 +700,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                     <input
                                         type="text"
                                         value={couponCode}
-                                        onChange={(e) => { setCouponCode(e.target.value); setCouponError(''); setCouponApplied(false); }}
+                                        onChange={(e) => { setCouponCode(e.target.value); setCouponError(''); setCouponApplied(false); setDiscountAmount(0); }}
                                         placeholder="أدخل كود الخصم"
                                         className="flex-1 px-3 py-2.5 border-2 border-[#D2E1D9] rounded-xl bg-[#F8FAFA] text-[#034289] text-sm placeholder-[#034289]/30 focus:border-[#4F8751] focus:bg-white transition-all"
                                         dir="ltr"
@@ -685,7 +712,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                 {couponApplied && (
                                     <p className="text-[#4F8751] text-xs mt-2 flex items-center gap-1">
                                         <CheckBadgeIcon className="w-4 h-4" />
-                                        تم تطبيق خصم 15% بنجاح!
+                                        تم تطبيق الخصم بنجاح!
                                     </p>
                                 )}
                                 {couponError && (
@@ -701,9 +728,9 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                                         <span>سعر الدورة</span>
                                         <span className="font-bold">{originalPrice} ج.م</span>
                                     </div>
-                                    {couponApplied && (
+                                    {couponApplied && discountAmount > 0 && (
                                         <div className="flex items-center justify-between text-[#4F8751]">
-                                            <span>خصم (15%)</span>
+                                            <span>خصم مضاف</span>
                                             <span className="font-bold">- {discountAmount.toFixed(0)} ج.م</span>
                                         </div>
                                     )}

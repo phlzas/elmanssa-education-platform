@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { MOCK_COURSES } from '../constants';
+import { fetchCourseById } from '../services/api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
 import StarIcon from './icons/StarIcon';
@@ -17,9 +17,10 @@ const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNav
     const [animStep, setAnimStep] = useState(0);
 
     useEffect(() => {
-        const foundCourse = MOCK_COURSES.find(c => c.id === courseId);
-        setCourse(foundCourse || null);
-        window.scrollTo(0, 0);
+        fetchCourseById(courseId).then(({ data }) => {
+            setCourse(data);
+            window.scrollTo(0, 0);
+        });
 
         // Stagger the animations
         const timers = [
@@ -143,7 +144,7 @@ const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNav
                                                 <StarIcon className="w-3.5 h-3.5 fill-current" />
                                                 <span>{course.rating}</span>
                                             </div>
-                                            <span>بواسطة {course.instructor}</span>
+                                            <span>بواسطة {course.instructorName ?? 'معلم'}</span>
                                         </div>
                                     </div>
                                 </div>

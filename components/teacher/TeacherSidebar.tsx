@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 interface TeacherSidebarProps {
     activeNav: TeacherNavItem;
     onNavChange: (nav: TeacherNavItem) => void;
-    onNavigate: (page: Page) => void;
+    onNavigate: (page: Page, payload?: { tab?: string }) => void;
 }
 
 const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ activeNav, onNavChange, onNavigate }) => {
@@ -29,14 +29,22 @@ const TeacherSidebar: React.FC<TeacherSidebarProps> = ({ activeNav, onNavChange,
             flexShrink: 0,
         }}>
             {/* Logo */}
-            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+                onClick={() => onNavigate('home')}
+                style={{
+                    padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    background: 'transparent', border: 'none', width: '100%', cursor: 'pointer',
+                    borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: 'rgba(255,255,255,0.06)'
+                }}
+            >
                 <div style={{
                     width: '36px', height: '36px', borderRadius: '10px',
                     background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
                 }}>🎓</div>
-                <span style={{ fontSize: '16px', fontWeight: 800, color: '#e2e8f0' }}>لوحة المدرس</span>
-            </div>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#e2e8f0', fontFamily: "'Cairo', sans-serif" }}>لوحة المدرس</span>
+            </button>
 
             {/* Teacher Profile */}
             <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>

@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Page } from '../App';
+import { startAIConversation, sendAIMessage } from '../services/api';
 
 interface AIPageProps {
     onNavigate: (page: Page) => void;
@@ -23,7 +24,23 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
         }
     ]);
     const [inputValue, setInputValue] = useState('');
+    const [conversationId, setConversationId] = useState<string | null>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const initConv = async () => {
+            try {
+                const token = localStorage.getItem('token') || undefined;
+                const data = await startAIConversation(token);
+                if (data && data.id) {
+                    setConversationId(data.id);
+                }
+            } catch (err) {
+                console.error('Failed to init AI conversation', err);
+            }
+        };
+        initConv();
+    }, []);
 
     const scrollToBottom = () => {
         if (chatContainerRef.current) {
@@ -43,9 +60,10 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
 
+        const userText = inputValue;
         const userMsg: Message = {
             id: Date.now(),
-            text: inputValue,
+            text: userText,
             sender: 'user',
             timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
         };
@@ -53,16 +71,27 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
         setMessages(prev => [...prev, userMsg]);
         setInputValue('');
 
-        // Mock AI Response
-        setTimeout(() => {
-            const aiMsg: Message = {
-                id: Date.now() + 1,
-                text: 'شكراً لسؤالك! سأقوم بتحليل طلبك والبحث عن أفضل المصادر التعليمية لك. هل تفضل دورات فيديو أم مقالات مقروءة؟',
+        if (conversationId) {
+            const token = localStorage.getItem('token') || undefined;
+            // Indicate loading typing...
+            const loadingId = Date.now() + 1;
+            setMessages(prev => [...prev, {
+                id: loadingId,
+                text: 'جاري التفكير...',
                 sender: 'ai',
                 timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-            };
-            setMessages(prev => [...prev, aiMsg]);
-        }, 1000);
+            }]);
+
+            sendAIMessage(conversationId, userText, token)
+                .then((res) => {
+                    const aiText = res?.message || res?.text || res?.content || 'عذراً، حدث خطأ أثناء معالجة الرد.';
+                    setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, text: aiText } : m));
+                })
+                .catch((err) => {
+                    console.error(err);
+                    setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, text: 'تعذر الاتصال بالخادم للإجابة على سؤالك.' } : m));
+                });
+        }
     };
 
     return (

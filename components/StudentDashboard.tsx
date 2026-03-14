@@ -1,205 +1,61 @@
-
 import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
+import { fetchStudentEnrollments, fetchStudentProgress } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface StudentDashboardProps {
-    onNavigate: (page: Page, payload?: { courseId?: number }) => void;
+    onNavigate: (page: Page, payload?: { courseId?: number; tab?: string }) => void;
+    initialTab?: string;
 }
 
-interface Lecture {
-    id: string;
-    title: string;
-    duration: string;
-    completed: boolean;
-}
+const TOKEN_KEY = 'elmanssa_auth_token';
 
-interface Level {
-    id: string;
-    name: string;
-    lectureCount: string;
-    lectures: Lecture[];
-}
-
-interface Subject {
-    id: string;
-    name: string;
-    instructor: string;
-    instructorAvatar: string;
-    avatarBg: string;
-    levelCount: string;
-    icon: string;
-    levels: Level[];
-}
-
-const courseSubjects: Subject[] = [
-    {
-        id: 'chem',
-        name: 'كيمياء',
-        instructor: 'Atef Abdo',
-        instructorAvatar: '👨‍🔬',
-        avatarBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        levelCount: '2 مستوى',
-        icon: '🧪',
-        levels: [
-            {
-                id: 'chem-l1',
-                name: 'المستوى 1',
-                lectureCount: '6 محاضرات',
-                lectures: [
-                    { id: 'chem-l1-1', title: 'خطة المنهج', duration: '15:30', completed: true },
-                    { id: 'chem-l1-2', title: 'المحاضرة الاولى اساسيات الكيمياء العضوية', duration: '45:20', completed: true },
-                    { id: 'chem-l1-3', title: 'المحاضرة الثانية الكيمياء العضوية', duration: '52:10', completed: false },
-                    { id: 'chem-l1-4', title: 'حل الواجب الجزء الاول', duration: '30:00', completed: false },
-                    { id: 'chem-l1-5', title: 'حل الواجب الجزء الثاني', duration: '28:45', completed: false },
-                    { id: 'chem-l1-6', title: 'حل الواجب الجزء الثالث', duration: '35:10', completed: false },
-                ],
-            },
-            {
-                id: 'chem-l2',
-                name: 'المستوى 2',
-                lectureCount: '3 محاضرات',
-                lectures: [
-                    { id: 'chem-l2-1', title: 'تفاعلات النشادر', duration: '40:00', completed: false },
-                    { id: 'chem-l2-2', title: 'تفاعلات النشادر', duration: '38:20', completed: false },
-                    { id: 'chem-l2-3', title: 'التفاعلات الذهنى', duration: '42:15', completed: false },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'phys',
-        name: 'فيزياء',
-        instructor: 'Ahmed Sami',
-        instructorAvatar: '👨‍🏫',
-        avatarBg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        levelCount: '1 مستوى',
-        icon: '⚡',
-        levels: [
-            {
-                id: 'phys-l1',
-                name: 'المستوى 1',
-                lectureCount: '3 محاضرات',
-                lectures: [
-                    { id: 'phys-l1-1', title: 'المحاضرة الاولى اساسيات الفيزياء', duration: '50:00', completed: false },
-                    { id: 'phys-l1-2', title: 'المحاضرة الاولى قانون اوم الجزء الاول', duration: '55:30', completed: false },
-                    { id: 'phys-l1-3', title: 'المحاضرة الثانية قانون اوم الجزء الثانية', duration: '48:20', completed: false },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'eng',
-        name: 'English',
-        instructor: 'Sarah Wilson',
-        instructorAvatar: '👩‍🏫',
-        avatarBg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        levelCount: '1 مستوى',
-        icon: '📝',
-        levels: [
-            {
-                id: 'eng-l1',
-                name: 'المستوى 1',
-                lectureCount: '4 محاضرات',
-                lectures: [
-                    { id: 'eng-l1-1', title: 'Introduction to Grammar', duration: '35:00', completed: false },
-                    { id: 'eng-l1-2', title: 'Vocabulary Building', duration: '40:15', completed: false },
-                    { id: 'eng-l1-3', title: 'Reading Comprehension', duration: '38:40', completed: false },
-                    { id: 'eng-l1-4', title: 'Writing Skills', duration: '42:00', completed: false },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'math',
-        name: 'رياضة عامة',
-        instructor: 'محمد حسن',
-        instructorAvatar: '📐',
-        avatarBg: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-        levelCount: '1 مستوى',
-        icon: '📐',
-        levels: [
-            {
-                id: 'math-l1',
-                name: 'المستوى 1',
-                lectureCount: '3 محاضرات',
-                lectures: [
-                    { id: 'math-l1-1', title: 'التفاضل والتكامل', duration: '55:00', completed: false },
-                    { id: 'math-l1-2', title: 'المصفوفات والمحددات', duration: '48:00', completed: false },
-                    { id: 'math-l1-3', title: 'الجبر الخطي', duration: '52:30', completed: false },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'smath',
-        name: 'الرياضة الخاصة',
-        instructor: 'د. أحمد',
-        instructorAvatar: '🧮',
-        avatarBg: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-        levelCount: '1 مستوى',
-        icon: '🧮',
-        levels: [
-            {
-                id: 'smath-l1',
-                name: 'المستوى 1',
-                lectureCount: '2 محاضرات',
-                lectures: [
-                    { id: 'smath-l1-1', title: 'الاحتمالات والإحصاء', duration: '60:00', completed: false },
-                    { id: 'smath-l1-2', title: 'المعادلات التفاضلية', duration: '55:00', completed: false },
-                ],
-            },
-        ],
-    },
-    {
-        id: 'mech',
-        name: 'الميكانيكا',
-        instructor: 'م. ياسر',
-        instructorAvatar: '⚙️',
-        avatarBg: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
-        levelCount: '1 مستوى',
-        icon: '⚙️',
-        levels: [
-            {
-                id: 'mech-l1',
-                name: 'المستوى 1',
-                lectureCount: '3 محاضرات',
-                lectures: [
-                    { id: 'mech-l1-1', title: 'الاستاتيكا', duration: '50:00', completed: false },
-                    { id: 'mech-l1-2', title: 'الديناميكا', duration: '55:00', completed: false },
-                    { id: 'mech-l1-3', title: 'ميكانيكا المواد', duration: '48:00', completed: false },
-                ],
-            },
-        ],
-    },
-];
-
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate, initialTab }) => {
+    const { user, logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeNav, setActiveNav] = useState<'dashboard' | 'courses' | 'profile'>('dashboard');
-    const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({ 'chem': true });
-    const [expandedLevels, setExpandedLevels] = useState<Record<string, boolean>>({ 'chem-l1': true });
+    const [activeNav, setActiveNav] = useState<'dashboard' | 'courses' | 'profile'>(
+        (initialTab as 'dashboard' | 'courses' | 'profile') || 'dashboard'
+    );
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileSidebar, setMobileSidebar] = useState(false);
 
-    // Calculate computed stats
-    const totalLectures = courseSubjects.reduce((acc, sub) => acc + sub.levels.reduce((a, l) => a + l.lectures.length, 0), 0);
-    const completedLectures = courseSubjects.reduce((acc, sub) => acc + sub.levels.reduce((a, l) => a + l.lectures.filter(lec => lec.completed).length, 0), 0);
-    const progressPercent = totalLectures > 0 ? Math.round((completedLectures / totalLectures) * 100) : 0;
+    const [isLoading, setIsLoading] = useState(true);
+    const [apiStats, setApiStats] = useState<any>(null);
+    const [apiSubjects, setApiSubjects] = useState<any[]>([]);
 
-    const toggleSubject = (id: string) => {
-        setExpandedSubjects(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+    useEffect(() => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            setIsLoading(false);
+            return;
+        }
 
-    const toggleLevel = (id: string) => {
-        setExpandedLevels(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const progressData = await fetchStudentProgress(token);
+                if (progressData) {
+                    setApiStats(progressData);
+                    if (progressData.subjects && Array.isArray(progressData.subjects)) {
+                        setApiSubjects(progressData.subjects);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching student progress', err);
+            }
+            setIsLoading(false);
+        };
 
-    const handleLectureClick = (subjectIndex: number, levelIndex: number, lectureIndex: number) => {
-        // Navigate to video viewer
-        onNavigate('video-viewer' as Page, {
-            courseId: subjectIndex * 100 + levelIndex * 10 + lectureIndex,
-        });
-    };
+        loadData();
+    }, []);
+
+    const totalLectures = apiStats?.totalLectures || 0;
+    const completedLectures = apiStats?.completedLectures || 0;
+    const progressPercent = apiStats?.overallProgress ? Math.round(apiStats.overallProgress) : 0;
+    const totalCourses = apiStats?.totalCourses || 0;
+
+    const studentName = user?.name || 'D4';
+    const studentInitials = studentName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     // Sidebar component (reused for mobile & desktop)
     const SidebarContent = () => (
@@ -220,7 +76,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                    onClick={() => onNavigate('home')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
                     <div style={{
                         width: '36px',
                         height: '36px',
@@ -233,8 +92,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                     }}>
                         🎓
                     </div>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#e2e8f0' }}>المنصة التعليمية</span>
-                </div>
+                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#e2e8f0', fontFamily: "'Cairo', sans-serif" }}>المنصة التعليمية</span>
+                </button>
             </div>
 
             {/* User Profile */}
@@ -257,18 +116,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                     margin: '0 auto 10px',
                     boxShadow: '0 4px 20px rgba(14, 165, 233, 0.3)',
                 }}>
-                    D4
+                    {studentInitials}
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0' }}>D4</div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>D4@dream.com</div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0' }}>{studentName}</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{user?.email || ''}</div>
             </div>
 
             {/* Navigation */}
             <div style={{ padding: '12px', flex: 1 }}>
-                {[
-                    { key: 'dashboard' as const, label: 'لوحة التحكم', icon: '📊', active: activeNav === 'dashboard' },
-                    { key: 'courses' as const, label: 'كورساتي', icon: '📚', active: activeNav === 'courses' },
-                    { key: 'profile' as const, label: 'الملف الشخصي', icon: '👤', active: activeNav === 'profile' },
+            {[
+                    {
+                        key: 'dashboard' as const, label: 'لوحة التحكم', active: activeNav === 'dashboard',
+                        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
+                    },
+                    {
+                        key: 'courses' as const, label: 'كورساتي', active: activeNav === 'courses',
+                        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" strokeLinecap="round" strokeLinejoin="round" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+                    },
+                    {
+                        key: 'profile' as const, label: 'الملف الشخصي', active: activeNav === 'profile',
+                        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+                    },
                 ].map((item) => (
                     <button
                         key={item.key}
@@ -301,7 +169,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                             if (!item.active) e.currentTarget.style.background = 'transparent';
                         }}
                     >
-                        <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                        <span style={{ display: 'flex' }}>{item.icon}</span>
                         {item.label}
                     </button>
                 ))}
@@ -310,7 +178,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
             {/* Logout */}
             <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <button
-                    onClick={() => onNavigate('home')}
+                    onClick={() => {
+                        logout();
+                        onNavigate('home');
+                    }}
                     style={{
                         width: '100%',
                         padding: '12px 16px',
@@ -341,6 +212,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
         </div>
     );
 
+    if (isLoading) {
+        return (
+            <div dir="rtl" style={{
+                display: 'flex', minHeight: '100vh', background: '#0a1628',
+                fontFamily: "'Cairo', sans-serif", alignItems: 'center', justifyContent: 'center',
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                        width: '52px', height: '52px', borderRadius: '50%',
+                        border: '4px solid rgba(56, 189, 248, 0.15)',
+                        borderTopColor: '#38bdf8',
+                        animation: 'dashSpin 0.8s linear infinite',
+                        margin: '0 auto 20px',
+                    }} />
+                    <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 600 }}>جاري تحميل البيانات...</div>
+                </div>
+                <style>{`@keyframes dashSpin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
     return (
         <div dir="rtl" style={{
             display: 'flex',
@@ -363,6 +255,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                     .mobile-menu-btn { display: flex !important; }
                     .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
                 }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
 
             {/* Mobile Sidebar Overlay */}
@@ -432,11 +325,37 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                             alignItems: 'center',
                             gap: '8px',
                         }}>
-                            مرحبا، D4 <span style={{ fontSize: '22px' }}>👋</span>
+                            مرحبا، {studentName} <span style={{ fontSize: '22px' }}>👋</span>
                         </h1>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Back to site */}
+                        <button
+                            onClick={() => onNavigate('home')}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '10px',
+                                padding: '8px 14px',
+                                color: '#94a3b8',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                fontFamily: "'Cairo', sans-serif",
+                                transition: 'all 0.2s',
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#e2e8f0'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#94a3b8'; }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
+                                <polyline points="9,22 9,12 15,12 15,22" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            الموقع الرئيسي
+                        </button>
                         {/* Search */}
                         <div style={{
                             position: 'relative',
@@ -466,21 +385,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
                             <svg style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
                                 <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                             </svg>
-                        </div>
-
-                        {/* Golden Plan Badge */}
-                        <div style={{
-                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                            borderRadius: '20px',
-                            padding: '6px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            color: '#fff',
-                        }}>
-                            👑 الباقة الذهبية
                         </div>
 
                         {/* Notifications */}
@@ -513,345 +417,263 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ onNavigate }) => {
 
                 {/* Page Content wrapped in scroll area */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                    {/* Stats Cards */}
-                    <div className="stats-grid" style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: '16px',
-                        marginBottom: '24px',
-                    }}>
-                        {[
-                            {
-                                label: 'المحاضرات',
-                                value: totalLectures.toString(),
-                                icon: '🎬',
-                                color: 'linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(14, 165, 233, 0.05))',
-                                borderColor: 'rgba(14, 165, 233, 0.2)',
-                                valueColor: '#38bdf8',
-                            },
-                            {
-                                label: 'نسبة الإنجاز',
-                                value: `${progressPercent}%`,
-                                icon: '📈',
-                                color: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))',
-                                borderColor: 'rgba(34, 197, 94, 0.2)',
-                                valueColor: '#22c55e',
-                            },
-                            {
-                                label: 'المكتملة',
-                                value: completedLectures.toString(),
-                                icon: '✅',
-                                color: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.05))',
-                                borderColor: 'rgba(168, 85, 247, 0.2)',
-                                valueColor: '#a855f7',
-                            },
-                            {
-                                label: 'الإنجازات',
-                                value: '0',
-                                icon: '🏆',
-                                color: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))',
-                                borderColor: 'rgba(245, 158, 11, 0.2)',
-                                valueColor: '#f59e0b',
-                            },
-                        ].map((stat, idx) => (
-                            <div key={idx} style={{
-                                background: stat.color,
-                                border: `1px solid ${stat.borderColor}`,
-                                borderRadius: '16px',
-                                padding: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
+                    {activeNav === 'dashboard' && (
+                        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                            {/* Stats Cards */}
+                            <div className="stats-grid" style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(4, 1fr)',
                                 gap: '16px',
-                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                cursor: 'default',
-                            }}
-                                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 25px ${stat.borderColor}`; }}
-                                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-                            >
-                                <div style={{ fontSize: '28px' }}>{stat.icon}</div>
-                                <div>
-                                    <div style={{ fontSize: '24px', fontWeight: 800, color: stat.valueColor }}>{stat.value}</div>
-                                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{stat.label}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Course Content Section */}
-                    <div style={{
-                        background: 'linear-gradient(135deg, rgba(13, 31, 60, 0.8), rgba(10, 22, 40, 0.9))',
-                        border: '1px solid rgba(56, 189, 248, 0.08)',
-                        borderRadius: '20px',
-                        overflow: 'hidden',
-                    }}>
-                        {/* Section Header */}
-                        <div style={{
-                            padding: '20px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.06)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <span style={{ fontSize: '20px' }}>📚</span>
-                                <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#e2e8f0', margin: 0 }}>محتواي التعليمي</h2>
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#64748b',
-                                fontSize: '13px',
+                                marginBottom: '24px',
                             }}>
-                                <span>{courseSubjects.length} مواد</span>
-                                <span>•</span>
-                                <span>{totalLectures} محاضرة</span>
-                            </div>
-                        </div>
-
-                        {/* Main Course Title */}
-                        <div style={{
-                            padding: '16px 24px',
-                            borderBottom: '1px solid rgba(255,255,255,0.04)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                        }}>
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: 'linear-gradient(135deg, #10b981, #059669)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '16px',
-                            }}>🎓</div>
-                            <div>
-                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0' }}>
-                                    معادلة كلية الهندسة و الحاسبات بالعربية
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#64748b' }}>6 مواد</div>
-                            </div>
-                        </div>
-
-                        {/* Subjects List */}
-                        <div style={{ padding: '8px 12px 12px' }}>
-                            {courseSubjects.map((subject, subjectIndex) => (
-                                <div key={subject.id} style={{
-                                    marginBottom: '4px',
-                                    borderRadius: '12px',
-                                    overflow: 'hidden',
-                                }}>
-                                    {/* Subject Header */}
-                                    <button
-                                        onClick={() => toggleSubject(subject.id)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '14px 16px',
-                                            background: expandedSubjects[subject.id]
-                                                ? 'rgba(56, 189, 248, 0.04)'
-                                                : 'transparent',
-                                            border: 'none',
-                                            borderRadius: expandedSubjects[subject.id] ? '12px 12px 0 0' : '12px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            fontFamily: "'Cairo', sans-serif",
-                                        }}
-                                        onMouseOver={e => {
-                                            if (!expandedSubjects[subject.id]) e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                        }}
-                                        onMouseOut={e => {
-                                            if (!expandedSubjects[subject.id]) e.currentTarget.style.background = 'transparent';
-                                        }}
+                                {[
+                                    {
+                                        label: 'عدد الكورسات',
+                                        value: totalCourses.toString(),
+                                        icon: '🎓',
+                                        color: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))',
+                                        borderColor: 'rgba(245, 158, 11, 0.2)',
+                                        valueColor: '#f59e0b',
+                                    },
+                                    {
+                                        label: 'المحاضرات',
+                                        value: totalLectures.toString(),
+                                        icon: '🎬',
+                                        color: 'linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(14, 165, 233, 0.05))',
+                                        borderColor: 'rgba(14, 165, 233, 0.2)',
+                                        valueColor: '#38bdf8',
+                                    },
+                                    {
+                                        label: 'نسبة الإنجاز الإجمالية',
+                                        value: `${progressPercent}%`,
+                                        icon: '📈',
+                                        color: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))',
+                                        borderColor: 'rgba(34, 197, 94, 0.2)',
+                                        valueColor: '#22c55e',
+                                    },
+                                    {
+                                        label: 'المحاضرات المكتملة',
+                                        value: completedLectures.toString(),
+                                        icon: '✅',
+                                        color: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.05))',
+                                        borderColor: 'rgba(168, 85, 247, 0.2)',
+                                        valueColor: '#a855f7',
+                                    },
+                                ].map((stat, idx) => (
+                                    <div key={idx} style={{
+                                        background: stat.color,
+                                        border: `1px solid ${stat.borderColor}`,
+                                        borderRadius: '16px',
+                                        padding: '20px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '16px',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        cursor: 'default',
+                                    }}
+                                        onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 25px ${stat.borderColor}`; }}
+                                        onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                                     >
-                                        {/* Expand Arrow */}
-                                        <svg
-                                            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"
-                                            style={{
-                                                transform: expandedSubjects[subject.id] ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                flexShrink: 0,
-                                            }}
-                                        >
-                                            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-
-                                        {/* Subject Info */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#e2e8f0' }}>{subject.name}</div>
-                                            <div style={{
-                                                background: 'rgba(56, 189, 248, 0.1)',
-                                                borderRadius: '8px',
-                                                padding: '2px 8px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                            }}>
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#38bdf8"><path d="M8 5v14l11-7z" /></svg>
-                                                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600 }}>{subject.levelCount}</span>
-                                            </div>
+                                        <div style={{ fontSize: '28px' }}>{stat.icon}</div>
+                                        <div>
+                                            <div style={{ fontSize: '24px', fontWeight: 800, color: stat.valueColor }}>{stat.value}</div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{stat.label}</div>
                                         </div>
+                                    </div>
+                                ))}
+                            </div>
 
-                                        {/* Instructor */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                            <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>{subject.instructor}</span>
-                                            <div style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '8px',
-                                                background: subject.avatarBg,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '14px',
-                                            }}>
-                                                {subject.instructorAvatar}
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    {/* Expanded Content */}
-                                    {expandedSubjects[subject.id] && (
-                                        <div style={{
-                                            background: 'rgba(255,255,255,0.015)',
-                                            borderRadius: '0 0 12px 12px',
-                                            paddingBottom: '8px',
-                                            animation: 'fadeIn 0.3s ease',
-                                        }}>
-                                            {subject.levels.map((level, levelIndex) => (
-                                                <div key={level.id} style={{ paddingRight: '28px' }}>
-                                                    {/* Level Header */}
-                                                    <button
-                                                        onClick={() => toggleLevel(level.id)}
-                                                        style={{
-                                                            width: '100%',
-                                                            padding: '10px 16px',
-                                                            background: 'transparent',
-                                                            border: 'none',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '10px',
-                                                            cursor: 'pointer',
-                                                            fontFamily: "'Cairo', sans-serif",
-                                                        }}
-                                                    >
-                                                        <svg
-                                                            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"
-                                                            style={{
-                                                                transform: expandedLevels[level.id] ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                                transition: 'transform 0.2s',
-                                                                flexShrink: 0,
-                                                            }}
-                                                        >
-                                                            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                                                        </svg>
-                                                        <span style={{
-                                                            fontSize: '12px',
-                                                            fontWeight: 700,
-                                                            color: '#38bdf8',
-                                                            background: 'rgba(56, 189, 248, 0.1)',
-                                                            padding: '3px 10px',
-                                                            borderRadius: '6px',
-                                                        }}>⚡ {level.name}</span>
-                                                        <span style={{ fontSize: '11px', color: '#475569' }}>{level.lectureCount}</span>
-                                                    </button>
-
-                                                    {/* Lectures */}
-                                                    {expandedLevels[level.id] && (
-                                                        <div style={{
-                                                            paddingRight: '24px',
-                                                            animation: 'fadeIn 0.2s ease',
-                                                        }}>
-                                                            {level.lectures.map((lecture, lectureIndex) => (
-                                                                <button
-                                                                    key={lecture.id}
-                                                                    onClick={() => handleLectureClick(subjectIndex, levelIndex, lectureIndex)}
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        padding: '10px 16px',
-                                                                        background: 'transparent',
-                                                                        border: 'none',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '10px',
-                                                                        cursor: 'pointer',
-                                                                        borderRadius: '8px',
-                                                                        transition: 'all 0.15s',
-                                                                        fontFamily: "'Cairo', sans-serif",
-                                                                        marginBottom: '2px',
-                                                                    }}
-                                                                    onMouseOver={e => {
-                                                                        e.currentTarget.style.background = 'rgba(56, 189, 248, 0.06)';
-                                                                    }}
-                                                                    onMouseOut={e => {
-                                                                        e.currentTarget.style.background = 'transparent';
-                                                                    }}
-                                                                >
-                                                                    {/* Video icon */}
-                                                                    <div style={{
-                                                                        width: '22px',
-                                                                        height: '22px',
-                                                                        borderRadius: '6px',
-                                                                        background: lecture.completed
-                                                                            ? 'linear-gradient(135deg, #10b981, #059669)'
-                                                                            : 'rgba(56, 189, 248, 0.1)',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        flexShrink: 0,
-                                                                    }}>
-                                                                        {lecture.completed ? (
-                                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                                                                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                                                                            </svg>
-                                                                        ) : (
-                                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="#38bdf8">
-                                                                                <path d="M8 5v14l11-7z" />
-                                                                            </svg>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Lecture title */}
-                                                                    <span style={{
-                                                                        flex: 1,
-                                                                        textAlign: 'right',
-                                                                        fontSize: '13px',
-                                                                        color: lecture.completed ? '#64748b' : '#cbd5e1',
-                                                                        fontWeight: 400,
-                                                                        textDecoration: lecture.completed ? 'line-through' : 'none',
-                                                                    }}>
-                                                                        {lecture.title}
-                                                                    </span>
-
-                                                                    {/* Duration */}
-                                                                    <span style={{
-                                                                        fontSize: '11px',
-                                                                        color: '#475569',
-                                                                        flexShrink: 0,
-                                                                    }}>
-                                                                        {lecture.duration}
-                                                                    </span>
-
-                                                                    {/* Play indicator */}
-                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#475569" style={{ flexShrink: 0 }}>
-                                                                        <path d="M8 5v14l11-7z" />
-                                                                    </svg>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                            {/* Course Content Section */}
+                            <div style={{
+                                background: 'linear-gradient(135deg, rgba(13, 31, 60, 0.8), rgba(10, 22, 40, 0.9))',
+                                border: '1px solid rgba(56, 189, 248, 0.08)',
+                                borderRadius: '20px',
+                                overflow: 'hidden',
+                            }}>
+                                {/* Section Header */}
+                                <div style={{
+                                    padding: '20px 24px',
+                                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span style={{ fontSize: '20px' }}>📚</span>
+                                        <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#e2e8f0', margin: 0 }}>محتواي التعليمي</h2>
+                                    </div>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        color: '#64748b',
+                                        fontSize: '13px',
+                                    }}>
+                                        <span>{apiSubjects.length} مواد</span>
+                                    </div>
                                 </div>
-                            ))}
+
+                                {/* Subjects List */}
+                                {apiSubjects.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                                        <div style={{ fontSize: '60px', marginBottom: '16px' }}>📭</div>
+                                        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 8px' }}>لا توجد مواد بعد</h3>
+                                        <p style={{ fontSize: '14px', color: '#64748b', margin: '0' }}>اشترك في دورات للبدء في التعلم</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '16px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                                            {apiSubjects.map((subject: any) => {
+                                                const pct = Math.min(100, Math.round(subject.progress || 0));
+                                                return (
+                                                    <div key={subject.id} style={{
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid rgba(255,255,255,0.06)',
+                                                        borderRadius: '16px',
+                                                        padding: '20px',
+                                                        transition: 'all 0.3s',
+                                                    }}
+                                                        onMouseOver={e => { e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.2)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                                        onMouseOut={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                                                                📚
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#e2e8f0', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                                                    {subject.name}
+                                                                </h3>
+                                                                <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>
+                                                                    اخر تفاعل: {subject.lastAccessed ? new Date(subject.lastAccessed).toLocaleDateString('ar-EG') : 'لم يبدأ بعد'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div style={{ marginBottom: '16px' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                                <span style={{ fontSize: '12px', color: '#64748b' }}>إنجاز</span>
+                                                                <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>{pct}%</span>
+                                                            </div>
+                                                            <div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                                                <div style={{ height: '100%', width: `${pct}%`, borderRadius: '4px', background: 'linear-gradient(90deg, #0ea5e9, #06b6d4)' }} />
+                                                            </div>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => onNavigate('video-viewer', { courseId: subject.id })}
+                                                            style={{
+                                                                width: '100%',
+                                                                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(6, 182, 212, 0.1))',
+                                                                border: '1px solid rgba(56, 189, 248, 0.2)',
+                                                                borderRadius: '10px',
+                                                                padding: '10px',
+                                                                color: '#38bdf8',
+                                                                fontSize: '13px',
+                                                                fontWeight: 700,
+                                                                cursor: 'pointer',
+                                                                fontFamily: "'Cairo', sans-serif",
+                                                                transition: 'all 0.2s',
+                                                            }}
+                                                            onMouseOver={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(6, 182, 212, 0.2))'; }}
+                                                            onMouseOut={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(6, 182, 212, 0.1))'; }}
+                                                        >
+                                                            مواصلة التعلم 📺
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {activeNav === 'courses' && (
+                        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0', margin: '0 0 20px' }}>📚 كورساتي</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                                {apiSubjects.map((subject: any) => {
+                                    const pct = Math.min(100, Math.round(subject.progress || 0));
+                                    return (
+                                        <div key={subject.id} style={{
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            borderRadius: '16px',
+                                            padding: '20px',
+                                            transition: 'all 0.3s',
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                                                    📚
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                                                        {subject.name}
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            <div style={{ marginBottom: '16px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                    <span style={{ fontSize: '12px', color: '#64748b' }}>إنجاز</span>
+                                                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>{pct}%</span>
+                                                </div>
+                                                <div style={{ height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: '4px', background: 'linear-gradient(90deg, #0ea5e9, #06b6d4)' }} />
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => onNavigate('video-viewer', { courseId: subject.id })}
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(6, 182, 212, 0.1))',
+                                                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                                                    borderRadius: '10px',
+                                                    padding: '10px',
+                                                    color: '#38bdf8',
+                                                    fontSize: '13px',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    fontFamily: "'Cairo', sans-serif",
+                                                    transition: 'all 0.2s',
+                                                }}
+                                            >
+                                                مواصلة التعلم 📺
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeNav === 'profile' && (
+                        <div style={{ animation: 'fadeIn 0.3s ease', maxWidth: '700px' }}>
+                            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0', margin: '0 0 20px' }}>👤 الملف الشخصي</h2>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '24px' }}>
+                                <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', boxShadow: '0 4px 20px rgba(14,165,233,0.3)', color: '#fff' }}>
+                                    {studentInitials}
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '20px', fontWeight: 800, color: '#e2e8f0' }}>{studentName}</div>
+                                    <div style={{ fontSize: '13px', color: '#64748b' }}>طالب</div>
+                                </div>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {[
+                                    { label: 'الاسم الكامل', value: studentName, type: 'text' },
+                                    { label: 'البريد الإلكتروني', value: user?.email || '', type: 'email' },
+                                ].map((f, i) => (
+                                    <div key={i}>
+                                        <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>{f.label}</label>
+                                        <input defaultValue={f.value} type={f.type} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none' }} />
+                                    </div>
+                                ))}
+                                <button style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', border: 'none', borderRadius: '12px', padding: '12px 28px', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Cairo', sans-serif", boxShadow: '0 4px 15px rgba(14,165,233,0.3)' }}>💾 حفظ التغييرات</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

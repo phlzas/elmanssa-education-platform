@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface LoginPageProps {
   onNavigate: (page: Page) => void;
@@ -13,7 +14,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const { login } = useAuth();
+  const { login, user, isLoggedIn } = useAuth();
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (user && isLoggedIn) {
+      showToast(`مرحباً بك ${user.name}!`, 'success');
+      const target: Page = user.role === 'admin' ? 'admin-dashboard' : (user.role === 'teacher' ? 'teacher-dashboard' : 'dashboard');
+      onNavigate(target);
+    }
+  }, [user, isLoggedIn, onNavigate, showToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +35,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     setIsLoading(true);
     try {
       await login(email, password);
-      // Redirect based on role — the auth context determines role from email
-      const isTeacher = email.includes('teacher') || email.includes('معلم') || email.includes('prof');
-      onNavigate(isTeacher ? 'teacher-dashboard' : 'dashboard');
-    } catch {
-      setError('حدث خطأ أثناء تسجيل الدخول');
-    } finally {
+    } catch (err: any) {
+      setError(err?.message || 'حدث خطأ أثناء تسجيل الدخول');
       setIsLoading(false);
+      return;
     }
+    setIsLoading(false);
   };
 
   return (
@@ -94,7 +102,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 <label htmlFor="password" className="block text-sm font-bold text-[#034289]">
                   كلمة المرور
                 </label>
-                <button type="button" className="text-sm text-[#4F8751] hover:underline font-medium">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('support')}
+                  className="text-sm text-[#4F8751] hover:underline font-medium"
+                >
                   نسيت كلمة المرور؟
                 </button>
               </div>

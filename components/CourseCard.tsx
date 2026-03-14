@@ -11,7 +11,7 @@ interface CourseCardProps {
 }
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
-  const isFree = course.price === 'free';
+  const isFree = course.isFree === true || course.price === 0;
 
   return (
     <div className="group card-premium bg-white border border-[#D2E1D9]/50 rounded-2xl overflow-hidden flex flex-col hover:border-[#4F8751]/30 transition-all duration-500 cursor-pointer" onClick={onClick}>
@@ -21,6 +21,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
           className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-700"
           src={course.imageUrl}
           alt={course.title}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/assets/courses/default.png'; }}
         />
 
         {/* Category Badge */}
@@ -55,11 +56,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
         {/* Instructor */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#034289] to-[#4F8751] flex items-center justify-center text-white font-bold text-sm shadow-md">
-            {course.instructor.charAt(0)}
+            {(course.instructorName ?? 'م').charAt(0)}
           </div>
           <div>
             <p className="text-sm font-medium text-[#034289]/60">المدرب</p>
-            <p className="text-[#034289] font-semibold">{course.instructor}</p>
+            <p className="text-[#034289] font-semibold">{course.instructorName ?? 'معلم'}</p>
           </div>
         </div>
 
@@ -86,7 +87,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
             <div className="p-1 bg-[#D2E1D9]/50 rounded">
               <ClockIcon className="w-4 h-4 text-[#4F8751]" />
             </div>
-            <span>{course.duration} ساعة</span>
+            <span>{typeof course.duration === 'number' ? course.duration : 0} ساعة</span>
           </div>
           <div className="w-px h-4 bg-[#D2E1D9]" />
           <div className="flex items-center gap-1.5">
@@ -108,7 +109,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
             </div>
           ) : (
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-[#034289]">{course.price}</span>
+              <span className="text-2xl font-black text-[#034289]">{Number(course.price).toLocaleString('ar-SA')}</span>
               <span className="text-sm text-[#034289]/70">ريال</span>
             </div>
           )}

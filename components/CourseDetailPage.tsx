@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { MOCK_COURSES } from '../constants';
+import { fetchCourseById } from '../services/api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
 import StarIcon from './icons/StarIcon';
@@ -19,10 +19,10 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
     const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'reviews'>('overview');
 
     useEffect(() => {
-        // In a real app, this would be an API call
-        const foundCourse = MOCK_COURSES.find(c => c.id === courseId);
-        setCourse(foundCourse || null);
-        window.scrollTo(0, 0);
+        fetchCourseById(courseId).then(({ data }) => {
+            setCourse(data);
+            window.scrollTo(0, 0);
+        });
     }, [courseId]);
 
     if (!course) {
@@ -52,7 +52,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                 <span className="px-3 py-1 bg-[#4F8751]/20 border border-[#4F8751]/50 rounded-full text-[#4F8751] text-sm font-semibold text-white">
                                     {course.category}
                                 </span>
-                                {course.price === 'free' && (
+                                {(course.isFree || course.price === 0) && (
                                     <span className="px-3 py-1 bg-white/20 border border-white/30 rounded-full text-white text-sm font-semibold">
                                         مجاني
                                     </span>
@@ -79,9 +79,9 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                             <div className="flex flex-wrap items-center gap-6 text-sm md:text-base text-white/90 pt-4">
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4F8751] to-[#6ba96d] flex items-center justify-center font-bold text-xs ring-2 ring-white/20">
-                                        {course.instructor.charAt(0)}
+                                        {(course.instructorName ?? 'م').charAt(0)}
                                     </div>
-                                    <span>بواسطة <span className="font-bold underline decoration-[#4F8751] underline-offset-4">{course.instructor}</span></span>
+                                    <span>بواسطة <span className="font-bold underline decoration-[#4F8751] underline-offset-4">{course.instructorName ?? 'معلم'}</span></span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <ClockIcon className="w-5 h-5 text-[#4F8751]" />
@@ -89,7 +89,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <UsersIcon className="w-5 h-5 text-[#4F8751]" />
-                                    <span>{course.language || 'العربية'}</span>
+                                    <span>{course.language ?? 'العربية'}</span>
                                 </div>
                             </div>
                         </div>
@@ -262,12 +262,12 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                 <div className="px-5 pb-6">
                                     <div className="flex items-end gap-2 mb-6">
                                         <span className="text-4xl font-black text-[#034289]">
-                                            {course.price === 'free' ? 'مجاني' : `${course.price}`}
+                                            {(course.isFree || course.price === 0) ? 'مجاني' : `${Number(course.price).toLocaleString('ar-SA')}`}
                                         </span>
-                                        {course.price !== 'free' && (
+                                        {!(course.isFree || course.price === 0) && (
                                             <>
                                                 <span className="text-lg text-[#034289]/60 font-medium line-through mb-1.5">
-                                                    {typeof course.price === 'number' ? (course.price * 1.5).toFixed(0) : ''}
+                                                    {Number(Math.round(Number(course.price) * 1.5)).toLocaleString('ar-SA')}
                                                 </span>
                                                 <span className="text-sm font-bold text-[#4F8751] mb-2 bg-[#4F8751]/10 px-2 py-0.5 rounded">
                                                     خصم 33%
@@ -278,7 +278,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
 
                                     <button
                                         onClick={() => {
-                                            if (course.price === 'free') {
+                                            if (course.isFree || course.price === 0) {
                                                 onNavigate('dashboard');
                                             } else {
                                                 onNavigate('checkout' as any, { courseId: course.id });
@@ -286,7 +286,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                         }}
                                         className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mb-3 hover:shadow-glow transition-all"
                                     >
-                                        {course.price === 'free' ? 'سجل مجاناً الآن' : 'اشترِ الآن'}
+                                        {(course.isFree || course.price === 0) ? 'سجل مجاناً الآن' : 'اشترِ الآن'}
                                     </button>
 
                                     <p className="text-center text-xs text-[#034289]/50 mb-6">30 يوم ضمان استرداد الأموال</p>
@@ -296,7 +296,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                         <ul className="space-y-3 text-sm text-[#034289]/70">
                                             <li className="flex items-center gap-3">
                                                 <ClockIcon className="w-5 h-5 text-[#4F8751]" />
-                                                <span>{course.duration} ساعة فيديو حسب الطلب</span>
+                                                <span>{typeof course.duration === 'number' ? course.duration : 0} ساعة فيديو حسب الطلب</span>
                                             </li>
                                             <li className="flex items-center gap-3">
                                                 <svg className="w-5 h-5 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
