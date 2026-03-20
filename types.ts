@@ -14,6 +14,7 @@ export interface CurriculumSection {
 
 export interface Course {
   id: number;
+  guidId?: string;
   title: string;
   category: string;
   description: string;

@@ -10,8 +10,8 @@ import CheckBadgeIcon from './icons/CheckBadgeIcon';
 import PlayIcon from './icons/PlayIcon';
 
 interface CourseDetailPageProps {
-    courseId: number;
-    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: number }) => void;
+    courseId: string | number;
+    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: string | number }) => void;
 }
 
 const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigate }) => {

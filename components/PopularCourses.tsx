@@ -136,7 +136,7 @@ const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
             >
               <CourseCard
                 course={course}
-                onClick={() => onNavigate('course-detail', { courseId: course.id })}
+                onClick={() => onNavigate('course-detail', { courseId: course.guidId || course.id })}
               />
             </div>
           ))}

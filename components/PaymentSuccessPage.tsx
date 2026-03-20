@@ -7,8 +7,8 @@ import StarIcon from './icons/StarIcon';
 import ClockIcon from './icons/ClockIcon';
 
 interface PaymentSuccessPageProps {
-    courseId: number;
-    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: number }) => void;
+    courseId: string | number;
+    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: string | number }) => void;
 }
 
 const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNavigate }) => {

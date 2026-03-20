@@ -320,8 +320,8 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, isTeacher = false
                   <div key={course.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
                     <CourseCard
                       course={course}
-                      onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.id })}
-                      onEnroll={() => onNavigate && onNavigate('checkout', { courseId: course.id })}
+                      onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.guidId || course.id })}
+                      onEnroll={() => onNavigate && onNavigate('checkout', { courseId: course.guidId || course.id })}
                     />
                   </div>
                 ))

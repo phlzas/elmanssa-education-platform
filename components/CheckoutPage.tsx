@@ -8,8 +8,8 @@ import ClockIcon from './icons/ClockIcon';
 import StarIcon from './icons/StarIcon';
 
 interface CheckoutPageProps {
-    courseId: number;
-    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: number }) => void;
+    courseId: string | number;
+    onNavigate: (page: Page, payload?: { accountType?: AccountType; courseId?: string | number }) => void;
 }
 
 type PaymentMethod = 'card' | 'wallet' | 'bank';

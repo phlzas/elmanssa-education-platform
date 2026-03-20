@@ -163,7 +163,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                             {instructorCourses.length > 0 ? instructorCourses.map((course) => (
                                 <div
                                     key={course.id}
-                                    onClick={() => onNavigate('course-detail', { courseId: course.id })}
+                                    onClick={() => onNavigate('course-detail', { courseId: course.guidId || course.id })}
                                     className="bg-white rounded-2xl shadow-sm border border-[#D2E1D9]/30 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group hover:-translate-y-1"
                                 >
                                     <div className="relative h-48 overflow-hidden">

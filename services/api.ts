@@ -33,6 +33,7 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
         const items = Array.isArray(raw) ? raw : [];
         const data: Course[] = items.map((item: any) => ({
             id: Number(item.id),
+            guidId: item.guidId || undefined,
             title: item.title ?? '',
             category: item.category ?? 'عام',
             description: item.description ?? '',
@@ -56,9 +57,10 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
     }
 };
 
-export const fetchCourseById = async (id: number): Promise<{ data: Course | null; error?: string }> => {
+export const fetchCourseById = async (id: string | number): Promise<{ data: Course | null; error?: string }> => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${id}`);
+        const courseId = typeof id === 'number' ? id.toString() : id;
+        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`);
         if (!res.ok) throw new Error(`Failed to fetch course: ${res.status} ${res.statusText}`);
         const json = await res.json();
 
