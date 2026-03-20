@@ -25,7 +25,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/v1$/, '') ?? 
 
 export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }> => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects`);
         if (!res.ok) throw new Error(`Failed to fetch courses: ${res.status} ${res.statusText}`);
         const json = await res.json();
 
@@ -60,7 +60,7 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
 export const fetchCourseById = async (id: string | number): Promise<{ data: Course | null; error?: string }> => {
     try {
         const courseId = typeof id === 'number' ? id.toString() : id;
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/${courseId}`);
         if (!res.ok) throw new Error(`Failed to fetch course: ${res.status} ${res.statusText}`);
         const json = await res.json();
 
@@ -286,7 +286,7 @@ export const createTeacherCourse = async (token: string, data: {
     imageUrl?: string;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -414,7 +414,7 @@ export const deleteTeacherCourse = async (token: string, courseId: number) => {
 // Create section in a course
 export const createCourseSection = async (token: string, courseId: number, data: { title: string; sortOrder?: number }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}/sections`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/${courseId}/sections`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -434,7 +434,7 @@ export const createCourseSection = async (token: string, courseId: number, data:
 // Update section
 export const updateCourseSection = async (token: string, sectionId: number, data: { title?: string; sortOrder?: number }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/sections/${sectionId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -454,7 +454,7 @@ export const updateCourseSection = async (token: string, sectionId: number, data
 // Delete section
 export const deleteCourseSection = async (token: string, sectionId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/sections/${sectionId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -476,7 +476,7 @@ export const createSectionLecture = async (token: string, sectionId: number, dat
     isPreview?: boolean;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/sections/${sectionId}/lectures`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}/lectures`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -502,7 +502,7 @@ export const updateSectionLecture = async (token: string, lectureId: number, dat
     isPreview?: boolean;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/lectures/${lectureId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -522,7 +522,7 @@ export const updateSectionLecture = async (token: string, lectureId: number, dat
 // Delete lecture
 export const deleteSectionLecture = async (token: string, lectureId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/lectures/${lectureId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });

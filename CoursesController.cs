@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace elmanassa.Controllers
 {
     [ApiController]
-    [Route("api/v1/courses")]
+    [Route("api/v1/subjects")]
     public class CoursesController : ControllerBase
     {
         private readonly ICourseService _courseService;

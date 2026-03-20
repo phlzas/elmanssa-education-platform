@@ -7,7 +7,7 @@ const PATH_TO_PAGE: Record<string, Page> = {
   '/courses': 'courses',
   '/signup': 'signup',
   '/login': 'login',
-  '/course': 'course-detail',
+  '/subject': 'course-detail',
   '/about': 'about',
   '/live-stream': 'live-stream',
   '/ai': 'ai',
