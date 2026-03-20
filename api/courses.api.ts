@@ -54,6 +54,7 @@ export function createReview(courseId: number | string, data: { rating: number; 
 function mapCourseItem(item: any): Course {
     return {
         id: Number(item.id),
+        guidId: item.guidId || undefined,
         title: item.title ?? '',
         category: item.category ?? 'عام',
         description: item.description ?? '',
