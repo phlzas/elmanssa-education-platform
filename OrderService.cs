@@ -11,7 +11,7 @@ namespace elmanassa.Services
         Task<OrderDTO?> GetOrderAsync(Guid orderId, Guid userId);
         Task<List<OrderDTO>> GetUserOrdersAsync(Guid userId, int page = 1, int perPage = 10);
         Task<CouponValidateResponseDTO?> ValidateCouponAsync(string code, decimal orderSubtotal);
-        Task<CouponValidateResponseDTO?> ValidateCouponAsync(string code, int? courseId);
+        Task<CouponValidateResponseDTO?> ValidateCouponAsync(string code, string? subjectId);
     }
 
     public class OrderService : IOrderService
@@ -29,24 +29,31 @@ namespace elmanassa.Services
         {
             try
             {
-                // Validate course exists
-                var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == model.CourseId);
-                if (course == null)
+                // Parse SubjectId from model
+                if (!Guid.TryParse(model.SubjectId, out var subjectGuid))
                 {
-                    _logger.LogWarning("Course {CourseId} not found", model.CourseId);
+                    _logger.LogWarning("Invalid SubjectId: {SubjectId}", model.SubjectId);
+                    return null;
+                }
+
+                // Validate subject exists
+                var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == subjectGuid);
+                if (subject == null)
+                {
+                    _logger.LogWarning("Subject {SubjectId} not found", subjectGuid);
                     return null;
                 }
 
                 // Check if already enrolled
                 var existingEnrollment = await _context.Enrollments
-                    .FirstOrDefaultAsync(e => e.UserId == userId && e.CourseId == model.CourseId);
+                    .FirstOrDefaultAsync(e => e.UserId == userId && e.SubjectId == subjectGuid);
                 if (existingEnrollment != null)
                 {
-                    _logger.LogWarning("User {UserId} already enrolled in course {CourseId}", userId, model.CourseId);
+                    _logger.LogWarning("User {UserId} already enrolled in subject {SubjectId}", userId, subjectGuid);
                     return null;
                 }
 
-                decimal subtotal = course.Price;
+                decimal subtotal = subject.Price;
                 decimal discount = 0;
                 string? couponCode = null;
 
@@ -72,12 +79,12 @@ namespace elmanassa.Services
                 var order = new Order
                 {
                     UserId = userId,
-                    CourseId = model.CourseId,
+                    SubjectId = subjectGuid,
                     OrderNumber = "ORD-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper(),
                     Subtotal = subtotal,
                     DiscountAmount = discount,
                     TotalAmount = totalAmount,
-                    PaymentMethod = model.PaymentMethod,
+                    PaymentMethod = model.PaymentMethod ?? "card",
                     PaymentStatus = "pending",
                     BillingFullName = model.BillingFullName,
                     BillingEmail = model.BillingEmail,
@@ -95,10 +102,13 @@ namespace elmanassa.Services
                     var enrollment = new Enrollment
                     {
                         UserId = userId,
-                        CourseId = model.CourseId,
+                        SubjectId = subjectGuid,
                         EnrolledAt = DateTime.UtcNow
                     };
                     _context.Enrollments.Add(enrollment);
+
+                    // Update student count
+                    subject.StudentsCount++;
                 }
 
                 await _context.SaveChangesAsync();
@@ -107,7 +117,7 @@ namespace elmanassa.Services
                 {
                     Id = order.Id,
                     OrderNumber = order.OrderNumber,
-                    CourseId = order.CourseId,
+                    SubjectId = order.SubjectId,
                     UserId = order.UserId,
                     Subtotal = order.Subtotal,
                     DiscountAmount = order.DiscountAmount,
@@ -138,7 +148,7 @@ namespace elmanassa.Services
                 {
                     Id = order.Id,
                     OrderNumber = order.OrderNumber,
-                    CourseId = order.CourseId,
+                    SubjectId = order.SubjectId,
                     UserId = order.UserId,
                     Subtotal = order.Subtotal,
                     DiscountAmount = order.DiscountAmount,
@@ -168,7 +178,7 @@ namespace elmanassa.Services
                     {
                         Id = o.Id,
                         OrderNumber = o.OrderNumber,
-                        CourseId = o.CourseId,
+                        SubjectId = o.SubjectId,
                         UserId = o.UserId,
                         Subtotal = o.Subtotal,
                         DiscountAmount = o.DiscountAmount,
@@ -215,22 +225,22 @@ namespace elmanassa.Services
             }
         }
 
-        public async Task<CouponValidateResponseDTO?> ValidateCouponAsync(string code, int? courseId)
+        public async Task<CouponValidateResponseDTO?> ValidateCouponAsync(string code, string? subjectId)
         {
             try
             {
-                if (courseId == null)
+                if (string.IsNullOrEmpty(subjectId) || !Guid.TryParse(subjectId, out var guid))
                     return null;
 
-                var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId.Value);
-                if (course == null)
+                var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == guid);
+                if (subject == null)
                     return null;
 
-                return await ValidateCouponAsync(code, course.Price);
+                return await ValidateCouponAsync(code, subject.Price);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating coupon by course");
+                _logger.LogError(ex, "Error validating coupon by subject");
                 return null;
             }
         }

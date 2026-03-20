@@ -84,7 +84,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const applyCoupon = async () => {
         try {
             setCouponError('');
-            const data = await validateCoupon(couponCode, courseId);
+            const data = await validateCoupon(couponCode, course?.guidId || courseId.toString());
             if (data?.isValid) {
                 setCouponApplied(true);
                 // Assuming validateCoupon might return the percentage/amount or we just calculate it.
@@ -147,7 +147,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
         try {
             const token = localStorage.getItem('token') || undefined;
             const orderData = {
-                courseId: courseId,
+                subjectId: course?.guidId || courseId.toString(),
                 paymentMethod: paymentMethod,
                 couponCode: couponApplied ? couponCode : undefined,
                 billingFullName: formData.fullName,

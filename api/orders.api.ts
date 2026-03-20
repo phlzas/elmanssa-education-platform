@@ -3,7 +3,7 @@ import { apiRequest } from "./client";
 // ─── Raw API calls ───────────────────────────────────────────
 
 export function placeOrder(data: {
-    courseId: number;
+    subjectId: string;
     paymentMethod?: string;
     couponCode?: string;
     billingFullName?: string;
@@ -24,7 +24,7 @@ export function getOrder(id: string) {
     return apiRequest(`/orders/${id}`);
 }
 
-export function checkCoupon(data: { code: string; courseId?: number }) {
+export function checkCoupon(data: { code: string; subjectId?: string }) {
     return apiRequest("/orders/validate-coupon", {
         method: "POST",
         body: JSON.stringify(data),
@@ -39,7 +39,7 @@ export function checkCoupon(data: { code: string; courseId?: number }) {
  */
 export const createOrder = async (
     data: {
-        courseId: number;
+        subjectId: string;
         paymentMethod: string;
         couponCode?: string;
         billingFullName: string;
@@ -58,11 +58,11 @@ export const createOrder = async (
 };
 
 /**
- * validateCoupon(code, courseId?) — matches old positional args.
+ * validateCoupon(code, subjectId?) — matches old positional args.
  */
-export const validateCoupon = async (code: string, courseId?: number) => {
+export const validateCoupon = async (code: string, subjectId?: string) => {
     try {
-        const json = await checkCoupon({ code, courseId });
+        const json = await checkCoupon({ code, subjectId });
         return json.data;
     } catch (error) {
         console.error('Error validating coupon', error);

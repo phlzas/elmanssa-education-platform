@@ -29,7 +29,6 @@ namespace elmanassa.Services
                 {
                     Id = e.Id,
                     UserId = e.UserId,
-                    CourseId = e.CourseId,
                     SubjectId = e.SubjectId,
                     EnrolledAt = e.EnrolledAt
                 })
@@ -71,7 +70,7 @@ namespace elmanassa.Services
 
             return new StudentProgressDTO
             {
-                TotalCourses = enrollments.Where(e => e.CourseId.HasValue).Count(),
+                TotalCourses = enrollments.Where(e => e.SubjectId.HasValue).Count(),
                 CompletedLectures = completedLectures,
                 TotalLectures = lecturesCount,
                 OverallProgress = overallProgress,
@@ -109,3 +108,4 @@ namespace elmanassa.Services
         }
     }
 }
+

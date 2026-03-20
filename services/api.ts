@@ -158,12 +158,12 @@ export const fetchTestimonials = async () => {
     }
 };
 
-export const validateCoupon = async (code: string, courseId?: number) => {
+export const validateCoupon = async (code: string, subjectId?: string) => {
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/orders/validate-coupon`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, courseId })
+            body: JSON.stringify({ code, subjectId })
         });
         if (!res.ok) throw new Error('Invalid coupon');
         const json = await res.json();
@@ -174,7 +174,7 @@ export const validateCoupon = async (code: string, courseId?: number) => {
     }
 };
 
-export const createOrder = async (data: { courseId: number, paymentMethod: string, couponCode?: string, billingFullName: string, billingEmail: string, billingPhone?: string }, token?: string) => {
+export const createOrder = async (data: { subjectId: string, paymentMethod: string, couponCode?: string, billingFullName: string, billingEmail: string, billingPhone?: string }, token?: string) => {
     try {
         const headers: any = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;

@@ -118,11 +118,6 @@ namespace elmanassa.ApplicationDbContext
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Enrollment>()
-                .HasOne(e => e.Course)
-                .WithMany(c => c.Enrollments)
-                .HasForeignKey(e => e.CourseId)
-                .OnDelete(DeleteBehavior.Cascade);
-            modelBuilder.Entity<Enrollment>()
                 .HasOne(e => e.Subject)
                 .WithMany()
                 .HasForeignKey(e => e.SubjectId)
@@ -160,9 +155,9 @@ namespace elmanassa.ApplicationDbContext
                 .HasForeignKey(o => o.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<Order>()
-                .HasOne(o => o.Course)
+                .HasOne(o => o.Subject)
                 .WithMany()
-                .HasForeignKey(o => o.CourseId)
+                .HasForeignKey(o => o.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Order>()
                 .HasOne(o => o.Coupon)
