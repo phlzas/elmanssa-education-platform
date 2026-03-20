@@ -32,6 +32,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createStep, setCreateStep] = useState(1);
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // API-loaded data
     const [apiStats, setApiStats] = useState<any>(null);
@@ -43,14 +44,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
     const [newSubjectName, setNewSubjectName] = useState('');
     const [newSubjectDesc, setNewSubjectDesc] = useState('');
     const [newSubjectIcon, setNewSubjectIcon] = useState('📚');
+    const [newSubjectPrice, setNewSubjectPrice] = useState(0);
+    const [newSubjectLevel, setNewSubjectLevel] = useState('مبتدئ');
+    const [newSubjectImageUrl, setNewSubjectImageUrl] = useState('');
     const [newLevels, setNewLevels] = useState<Level[]>([
         { id: 'new-l1', name: 'المستوى 1', lectures: [] }
     ]);
 
     // Load subjects + stats from API
     useEffect(() => {
+        console.log('[TeacherDashboard] useEffect triggered');
+        console.log('[TeacherDashboard] User from context:', user);
+        
         const token = localStorage.getItem(TOKEN_KEY);
-        if (!token) { setIsLoadingData(false); return; }
+        console.log('[TeacherDashboard] Token from localStorage:', token ? 'EXISTS' : 'MISSING');
+        
+        if (!token) { 
+            console.warn('[TeacherDashboard] No token found, skipping data load');
+            setIsLoadingData(false); 
+            return; 
+        }
 
         const loadData = async () => {
             setIsLoadingData(true);
@@ -69,12 +82,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                 if (subjectsData && Array.isArray(subjectsData)) {
                     const mapped: Subject[] = subjectsData.map((s: any) => ({
                         id: s.id?.toString() || `subj-${Date.now()}`,
-                        name: s.name || s.title || '',
+                        name: s.title || s.name || '',
                         description: s.description || '',
                         icon: s.icon || '📚',
+                        category: s.category || 'عام',
+                        price: s.price || 0,
+                        level: s.level || 'مبتدئ',
                         levels: (s.levels || []).map((l: any) => ({
                             id: l.id?.toString() || `lev-${Date.now()}`,
-                            name: l.name || '',
+                            name: l.title || l.name || '',
                             lectures: (l.lectures || []).map((lec: any) => ({
                                 id: lec.id?.toString() || `lec-${Date.now()}`,
                                 title: lec.title || '',
@@ -139,6 +155,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
         setNewSubjectName('');
         setNewSubjectDesc('');
         setNewSubjectIcon('📚');
+        setNewSubjectPrice(0);
+        setNewSubjectLevel('مبتدئ');
+        setNewSubjectImageUrl('');
         setNewLevels([{ id: 'new-l1', name: 'المستوى 1', lectures: [] }]);
         setCreateStep(1);
         setEditingSubject(null);
@@ -150,6 +169,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
         setNewSubjectName(subject.name);
         setNewSubjectDesc(subject.description);
         setNewSubjectIcon(subject.icon);
+        setNewSubjectLevel('مبتدئ'); // Default for editing
+        setNewSubjectImageUrl('');
         setNewLevels(JSON.parse(JSON.stringify(subject.levels)));
         setCreateStep(1);
         setShowCreateModal(true);
@@ -183,13 +204,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
     };
 
     const saveSubject = async () => {
-        const token = localStorage.getItem(TOKEN_KEY);
-        if (!token) return;
+        // First check if user is logged in via AuthContext
+        if (!user) {
+            showToast('يجب تسجيل الدخول أولاً', 'error');
+            console.error('[saveSubject] User not found in AuthContext');
+            onNavigate('login');
+            return;
+        }
 
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            showToast('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى', 'error');
+            console.error('[saveSubject] Token not found in localStorage');
+            console.log('[saveSubject] User exists in context but token missing');
+            console.log('[saveSubject] Available localStorage keys:', Object.keys(localStorage));
+            onNavigate('login');
+            return;
+        }
+
+        console.log('[saveSubject] User and token verified, proceeding with save');
+        console.log('[saveSubject] User role:', user.role);
+        setIsSaving(true);
         try {
             if (editingSubject) {
                 // Update via API (keep existing logic)
-                await updateTeacherSubject(token, parseInt(editingSubject.id), {
+                await updateTeacherSubject(token, editingSubject.id, {
                     title: newSubjectName,
                     description: newSubjectDesc,
                 });
@@ -199,68 +238,91 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                         : s
                 ));
                 showToast('تم تحديث المادة بنجاح', 'success');
+                setTimeout(() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                    setIsSaving(false);
+                }, 1000);
             } else {
-                // NEW: Create course with complete curriculum in one API call
-                
                 // Calculate total duration from all lectures
                 const totalDuration = newLevels.reduce((total, level) => {
                     return total + level.lectures.reduce((sum, lec) => {
-                        // Parse duration formats: "45 min", "1:30:00", "90"
                         const durationStr = lec.duration.trim();
-                        
-                        // Format: "HH:MM:SS" or "MM:SS"
                         if (durationStr.includes(':')) {
                             const parts = durationStr.split(':').map(p => parseInt(p) || 0);
-                            if (parts.length === 3) {
-                                return sum + (parts[0] * 60 + parts[1]); // hours to minutes + minutes
-                            } else if (parts.length === 2) {
-                                return sum + parts[0]; // just minutes
-                            }
+                            if (parts.length === 3) return sum + (parts[0] * 60 + parts[1]);
+                            if (parts.length === 2) return sum + parts[0];
                         }
-                        
-                        // Format: "45 min" or "45"
                         const match = durationStr.match(/(\d+)/);
                         return sum + (match ? parseInt(match[1]) : 0);
                     }, 0);
                 }, 0);
 
-                // Build the request payload
+                // Build sections — preserve all levels, even those without lectures
+                // This ensures the teacher's structure is maintained
+                const sections = newLevels.map((level, index) => {
+                    const filteredLectures = level.lectures
+                        .filter(lec => lec.title.trim())
+                        .map((lec, lecIndex) => ({
+                            title: lec.title,
+                            duration: lec.duration || undefined,
+                            videoUrl: lec.videoUrl || undefined,
+                            sortOrder: lecIndex,
+                            isPreview: lecIndex === 0,
+                        }));
+                    
+                    return {
+                        title: level.name,
+                        sortOrder: index,
+                        lectures: filteredLectures,
+                    };
+                });
+
+                // Only filter out sections that have no name (invalid sections)
+                // Keep sections with names even if they have no lectures yet
+                const validSections = sections.filter(section => section.title.trim());
+
                 const courseData = {
                     title: newSubjectName,
                     description: newSubjectDesc || undefined,
-                    category: 'عام', // Default category
-                    duration: Math.max(1, totalDuration), // Ensure at least 1 hour
-                    level: 'مبتدئ', // Default level
+                    category: 'عام',
+                    duration: Math.max(1, totalDuration),
+                    level: newSubjectLevel !== 'جميع المستويات' ? newSubjectLevel : undefined,
                     language: 'العربية',
-                    price: 0, // Free by default
-                    imageUrl: undefined,
-                    sections: newLevels.map((level, index) => ({
-                        title: level.name,
-                        sortOrder: index,
-                        lectures: level.lectures
-                            .filter(lec => lec.title.trim()) // Only include lectures with titles
-                            .map((lec, lecIndex) => ({
-                                title: lec.title,
-                                duration: lec.duration || undefined,
-                                videoUrl: lec.videoUrl || undefined,
-                                sortOrder: lecIndex,
-                                isPreview: lecIndex === 0, // First lecture as preview
-                            })),
-                    })).filter(section => section.lectures.length > 0), // Only include sections with lectures
+                    price: newSubjectPrice,
+                    imageUrl: newSubjectImageUrl || undefined,
+                    sections: validSections,
                 };
 
-                // Call the new API endpoint
+                console.log('[saveSubject] Sending payload:', JSON.stringify(courseData, null, 2));
+                console.log('[saveSubject] Total sections:', validSections.length);
+                console.log('[saveSubject] Sections with lectures:', validSections.filter(s => s.lectures.length > 0).length);
+
                 const created = await createCourseWithCurriculum(token, courseData);
+
+                console.log('[saveSubject] API response:', JSON.stringify(created, null, 2));
+
+                // Verify response structure before accessing nested properties
+                if (!created) {
+                    throw new Error('لم يتم استلام رد من الخادم');
+                }
+
+                // Handle both response formats: { data: {...} } or direct object
+                const responseData = created.data || created;
                 
-                // Map API response to local Subject format
+                if (!responseData.id) {
+                    console.error('[saveSubject] Response missing ID:', responseData);
+                    throw new Error('الرد من الخادم لا يحتوي على معرف المادة');
+                }
+
                 const newSubject: Subject = {
-                    id: created.id?.toString() || `subj-${Date.now()}`,
-                    name: created.title,
-                    description: created.description || '',
+                    id: responseData.id?.toString() || `subj-${Date.now()}`,
+                    name: responseData.title || responseData.name || newSubjectName,
+                    description: responseData.description || '',
                     icon: newSubjectIcon,
-                    levels: (created.sections || []).map((s: any) => ({
+                    levels: (responseData.levels || []).map((s: any) => ({
                         id: s.id?.toString() || `lev-${Date.now()}`,
-                        name: s.title,
+                        name: s.title || s.name || '',
                         lectures: (s.lectures || []).map((l: any) => ({
                             id: l.id?.toString() || `lec-${Date.now()}`,
                             title: l.title,
@@ -268,23 +330,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                             videoUrl: l.videoUrl || '',
                         })),
                     })),
-                    students: created.studentsCount || 0,
-                    status: created.status === 'published' ? 'published' : 'draft',
-                    createdAt: created.createdAt 
-                        ? new Date(created.createdAt).toISOString().split('T')[0] 
+                    students: responseData.studentsCount || 0,
+                    status: responseData.status === 'published' ? 'published' : 'draft',
+                    createdAt: responseData.createdAt
+                        ? new Date(responseData.createdAt).toISOString().split('T')[0]
                         : new Date().toISOString().split('T')[0],
                 };
-                
+
                 setSubjects([...subjects, newSubject]);
                 showToast('تم إنشاء المادة بنجاح ✨', 'success');
+                setTimeout(() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                    setIsSaving(false);
+                }, 1000);
             }
         } catch (err: any) {
-            console.error('Error saving subject', err);
-            const errorMessage = err.message || 'حدث خطأ أثناء حفظ المادة';
+            console.error('[saveSubject] Error:', err);
+            console.error('[saveSubject] Error stack:', err.stack);
+            const errorMessage = err.status === 401 ? 'انتهت صلاحية الجلسة'
+                : err.status === 403 ? 'غير مصرح'
+                : err.response?.error?.message || err.response?.title || err.message || 'حدث خطأ أثناء حفظ المادة';
             showToast(errorMessage, 'error');
+            setIsSaving(false);
+            // Modal stays open on error so user can fix issues
         }
-        setShowCreateModal(false);
-        resetForm();
     };
 
     const deleteSubject = async (id: string) => {
@@ -308,7 +378,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
         const token = localStorage.getItem(TOKEN_KEY);
         if (token) {
             try {
-                await publishTeacherSubject(token, parseInt(id), newStatus);
+                await publishTeacherSubject(token, id, newStatus);
                 showToast(newStatus === 'published' ? 'تم نشر المادة بنجاح' : 'تم إيقاف نشر المادة', 'success');
             } catch (err) {
                 console.error('Error toggling publish', err);
@@ -666,17 +736,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                             </div>
                             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {[
-                                    { label: 'الاسم الكامل', value: user?.name || 'المدرس', type: 'text' },
-                                    { label: 'البريد الإلكتروني', value: user?.email || '', type: 'email' },
+                                    { label: 'الاسم الكامل', value: user?.name || 'المدرس', type: 'text', id: 'profile-name' },
+                                    { label: 'البريد الإلكتروني', value: user?.email || '', type: 'email', id: 'profile-email' },
                                 ].map((f, i) => (
                                     <div key={i}>
-                                        <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>{f.label}</label>
-                                        <input defaultValue={f.value} type={f.type} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none' }} />
+                                        <label htmlFor={f.id} style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>{f.label}</label>
+                                        <input id={f.id} name={f.id} defaultValue={f.value} type={f.type} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none' }} />
                                     </div>
                                 ))}
                                 <div>
-                                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>نبذة عنك</label>
-                                    <textarea defaultValue="" rows={3} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none', resize: 'vertical' as const }} />
+                                    <label htmlFor="profile-bio" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block' }}>نبذة عنك</label>
+                                    <textarea id="profile-bio" name="profile-bio" defaultValue="" rows={3} style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#e2e8f0', fontSize: '14px', fontFamily: "'Cairo', sans-serif", outline: 'none', resize: 'vertical' as const }} />
                                 </div>
                                 <button style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', borderRadius: '12px', padding: '12px 28px', color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: "'Cairo', sans-serif", boxShadow: '0 4px 15px rgba(245,158,11,0.3)' }}>💾 حفظ التغييرات</button>
                             </div>
@@ -698,6 +768,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                 setNewSubjectDesc={setNewSubjectDesc}
                 newSubjectIcon={newSubjectIcon}
                 setNewSubjectIcon={setNewSubjectIcon}
+                newSubjectPrice={newSubjectPrice}
+                setNewSubjectPrice={setNewSubjectPrice}
+                newSubjectLevel={newSubjectLevel}
+                setNewSubjectLevel={setNewSubjectLevel}
+                newSubjectImageUrl={newSubjectImageUrl}
+                setNewSubjectImageUrl={setNewSubjectImageUrl}
                 newLevels={newLevels}
                 addLevel={addLevel}
                 removeLevel={removeLevel}
@@ -706,9 +782,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                 removeLecture={removeLecture}
                 updateLecture={updateLecture}
                 onSave={saveSubject}
+                isSaving={isSaving}
             />
         </div>
     );
 };
 
 export default TeacherDashboard;
+    

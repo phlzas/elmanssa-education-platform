@@ -1,6 +1,27 @@
 import { Course, Lecture, CurriculumSection } from '../types';
+import { getToken } from '../utils/token';
 
-const API_BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) || 'https://elmanasa-edu.runasp.net';
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
+async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const token = getToken();
+    console.log('[authedFetch] Token retrieved:', token ? 'EXISTS' : 'MISSING');
+    console.log('[authedFetch] URL:', url);
+    
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(options.headers as Record<string, string> || {}),
+        },
+    });
+    
+    console.log('[authedFetch] Response status:', res.status);
+    return res;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/v1$/, '') ?? '';
 
 export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }> => {
     try {
@@ -236,17 +257,17 @@ export const pingTeacherAuth = async (token: string) => {
     }
 };
 
-// Fetch teacher's courses (was fetchTeacherSubjects)
+// Fetch teacher's subjects/courses
 export const fetchTeacherCourses = async (token: string) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/instructor/my-courses`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to fetch teacher courses');
+        if (!res.ok) throw new Error('Failed to fetch teacher subjects');
         const json = await res.json();
         return json.data;
     } catch (error) {
-        console.error('Error fetching teacher courses', error);
+        console.error('Error fetching teacher subjects', error);
         return [];
     }
 };
@@ -280,7 +301,7 @@ export const createTeacherCourse = async (token: string, data: {
     }
 };
 
-// NEW: Create course with complete curriculum (sections + lectures) in one API call
+// NEW: Create subject with complete curriculum (levels + lectures) in one API call
 export const createCourseWithCurriculum = async (token: string, data: {
     title: string;
     description?: string;
@@ -302,28 +323,47 @@ export const createCourseWithCurriculum = async (token: string, data: {
         }>;
     }>;
 }) => {
-    try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/with-curriculum`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(data)
-        });
-        if (!res.ok) {
-            const errorJson = await res.json();
-            throw new Error(errorJson.error?.message || 'Failed to create course with curriculum');
-        }
-        const json = await res.json();
-        return json.data;
-    } catch (error) {
-        console.error('Error creating course with curriculum', error);
+    const payload = {
+        title: data.title,
+        description: data.description,
+        icon: '📚',
+        category: data.category,
+        duration: data.duration,
+        level: data.level,
+        language: data.language,
+        price: data.price,
+        imageUrl: data.imageUrl,
+        levels: data.sections.map((section, idx) => ({
+            title: section.title,
+            sortOrder: section.sortOrder ?? idx,
+            lectures: section.lectures.map((lec, lecIdx) => ({
+                title: lec.title,
+                duration: lec.duration,
+                videoUrl: lec.videoUrl,
+                sortOrder: lec.sortOrder ?? lecIdx,
+            })),
+        })),
+    };
+
+    const res = await authedFetch(`${API_BASE}/teacher/subjects`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        const message = errorJson.error?.message || errorJson.message || errorJson.title || `فشل إنشاء المادة (${res.status})`;
+        const error: any = new Error(message);
+        error.status = res.status;
+        error.response = errorJson;
         throw error;
     }
+
+    const json = await res.json();
+    return json.data;
 };
 
-// Update course (was updateTeacherSubject)
+// Update subject (was updateTeacherSubject)
 export const updateTeacherCourse = async (token: string, courseId: number, data: { 
     title?: string; 
     description?: string; 
@@ -336,35 +376,35 @@ export const updateTeacherCourse = async (token: string, courseId: number, data:
     status?: string;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ title: data.title, description: data.description })
         });
-        if (!res.ok) throw new Error('Failed to update course');
+        if (!res.ok) throw new Error('Failed to update subject');
         const json = await res.json();
         return json.data;
     } catch (error) {
-        console.error('Error updating course', error);
+        console.error('Error updating subject', error);
         throw error;
     }
 };
 
-// Delete course (was deleteTeacherSubject)
+// Delete subject (was deleteTeacherSubject)
 export const deleteTeacherCourse = async (token: string, courseId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to delete course');
+        if (!res.ok) throw new Error('Failed to delete subject');
         const json = await res.json();
         return json.data;
     } catch (error) {
-        console.error('Error deleting course', error);
+        console.error('Error deleting subject', error);
         throw error;
     }
 };
@@ -512,22 +552,22 @@ export const fetchTeacherStudents = async (token: string, search?: string, page 
     }
 };
 
-// Publish/unpublish course (update status)
+// Publish/unpublish subject
 export const publishTeacherSubject = async (token: string, courseId: string, status: string) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/courses/${courseId}`, {
-            method: 'PUT',
+        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}/publish`, {
+            method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({ status })
         });
-        if (!res.ok) throw new Error('Failed to update course status');
+        if (!res.ok) throw new Error('Failed to update subject status');
         const json = await res.json();
         return json.data;
     } catch (error) {
-        console.error('Error updating course status', error);
+        console.error('Error updating subject status', error);
         throw error;
     }
 };
@@ -688,7 +728,7 @@ export const fetchSubjectById = async (id: string, token: string): Promise<{ dat
             const item = json.data;
             const curriculum = Array.isArray(item.levels)
                 ? item.levels.map((lv: any) => ({
-                    section: lv.name ?? '',
+                    section: lv.title ?? lv.name ?? '',
                     lectures: Array.isArray(lv.lectures)
                         ? lv.lectures.map((l: any) => ({
                             id: Number(l.id),
@@ -702,7 +742,7 @@ export const fetchSubjectById = async (id: string, token: string): Promise<{ dat
 
             const data = {
                 id: Number(item.id),
-                title: item.name || '',
+                title: item.title || item.name || '',
                 category: 'Subject',
                 description: item.description || '',
                 instructorId: typeof item.teacherId === 'number' ? item.teacherId : undefined,

@@ -17,6 +17,9 @@ export interface Subject {
     name: string;
     description: string;
     icon: string;
+    category?: string;
+    price?: number;
+    level?: string;
     levels: Level[];
     students: number;
     status: 'published' | 'draft';
