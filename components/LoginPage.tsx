@@ -68,8 +68,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center font-medium animate-fade-in">
-              {error}
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium animate-fade-in flex items-start gap-2">
+              <span className="text-red-400 mt-0.5">⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 

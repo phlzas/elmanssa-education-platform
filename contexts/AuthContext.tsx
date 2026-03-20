@@ -36,7 +36,73 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'elmanssa_auth_user';
-const TOKEN_KEY = 'elmanssa_auth_token';
+
+function extractErrorMessage(data: any, fallback: string): string {
+    // Handle ASP.NET Core validation errors
+    if (data.errors && typeof data.errors === 'object') {
+        const messages: string[] = [];
+        for (const [field, errors] of Object.entries(data.errors)) {
+            if (Array.isArray(errors)) {
+                for (const err of errors) {
+                    messages.push(formatValidationMessage(field, err));
+                }
+            }
+        }
+        if (messages.length > 0) return messages.join('\n');
+    }
+    
+    // Handle custom API error format
+    if (data.error?.details && Array.isArray(data.error.details)) {
+        return data.error.details.map((d: any) => d.message || d).join('\n');
+    }
+    if (data.error?.message) return data.error.message;
+    
+    // Handle other formats
+    if (data.title && data.status === 401) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+    if (data.title) return data.title;
+    if (data.message) return data.message;
+    
+    return fallback;
+}
+
+function formatValidationMessage(field: string, message: string): string {
+    const fieldTranslations: Record<string, string> = {
+        'Email': 'البريد الإلكتروني',
+        'Password': 'كلمة المرور',
+        'Name': 'الاسم',
+        'NationalId': 'الرقم القومي',
+        'PhoneNumber': 'رقم الهاتف',
+        'Specialization': 'التخصص',
+        'Bio': 'النبذة الشخصية',
+        'CvUrl': 'رابط السيرة الذاتية',
+        'YearsOfExperience': 'سنوات الخبرة',
+    };
+    
+    const messageTranslations: Record<string, string> = {
+        'is required': 'مطلوب',
+        'must contain uppercase, lowercase, and number': 'يجب أن تحتوي على حرف كبير وحرف صغير ورقم',
+        'must be a valid email': 'يجب أن يكون بريد إلكتروني صحيح',
+        'must be at least': 'يجب أن يكون على الأقل',
+        'already exists': 'موجود بالفعل',
+        'Invalid': 'غير صحيح',
+    };
+    
+    const arField = fieldTranslations[field] || field;
+    let arMessage = message;
+    for (const [eng, ar] of Object.entries(messageTranslations)) {
+        if (message.includes(eng)) {
+            arMessage = message.replace(eng, ar);
+            break;
+        }
+    }
+    
+    // If message is just "X is required"
+    if (message === `${field} is required` || message === 'is required') {
+        return `${arField} مطلوب`;
+    }
+    
+    return `${arField}: ${arMessage}`;
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(() => {
@@ -53,9 +119,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
         } else {
             localStorage.removeItem(STORAGE_KEY);
-            localStorage.removeItem(TOKEN_KEY);
         }
     }, [user]);
+
+    useEffect(() => {
+        const handleExpired = () => {
+            // Only log out if we actually have a session — avoids nuking state on transient 401s
+            setUser(prev => {
+                if (prev) clearToken();
+                return null;
+            });
+        };
+        window.addEventListener('auth:expired', handleExpired);
+        return () => window.removeEventListener('auth:expired', handleExpired);
+    }, []);
 
     const login = useCallback(async (email: string, password: string) => {
         const res = await fetch(`${API_BASE}/auth/login`, {
@@ -66,16 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const data = await res.json();
 
+        if (res.status === 401) {
+            throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة. تأكد من صحة بياناتك');
+        }
+
         if (!res.ok || !data.success) {
-            let errorMsg = data.message || 'Login failed';
-            if (data.error && data.error.details) {
-                errorMsg = data.error.details.map((d: any) => d.message).join(', ');
-            } else if (data.error && data.error.message) {
-                errorMsg = data.error.message;
-            } else if (data.title) {
-                errorMsg = data.title;
-            }
-            throw new Error(errorMsg);
+            throw new Error(extractErrorMessage(data, 'فشل تسجيل الدخول'));
         }
 
         if (data.token) {
@@ -100,14 +173,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const data = await res.json();
 
+        if (res.status === 400) {
+            throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من الحقول المطلوبة'));
+        }
+
         if (!res.ok || !data.success) {
-            let errorMsg = data.message || 'Signup failed';
-            if (data.error && data.error.details) {
-                errorMsg = data.error.details.map((d: any) => d.message).join(', ');
-            } else if (data.error && data.error.message) {
-                errorMsg = data.error.message;
-            }
-            throw new Error(errorMsg);
+            throw new Error(extractErrorMessage(data, 'فشل إنشاء الحساب'));
         }
 
         if (data.token) {
@@ -141,14 +212,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             body: JSON.stringify(payload)
         });
         const data = await res.json();
+        if (res.status === 400) {
+            throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من جميع الحقول المطلوبة'));
+        }
         if (!res.ok || !data.success) {
-            let errorMsg = data.message || 'Signup failed';
-            if (data.error && data.error.details) {
-                errorMsg = data.error.details.map((d: any) => d.message).join(', ');
-            } else if (data.error && data.error.message) {
-                errorMsg = data.error.message;
-            }
-            throw new Error(errorMsg);
+            throw new Error(extractErrorMessage(data, 'فشل إنشاء حساب المدرس'));
         }
         if (data.token) {
             setToken(data.token);

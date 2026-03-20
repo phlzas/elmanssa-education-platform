@@ -57,8 +57,8 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
       setError('يرجى ملء جميع الحقول');
       return;
     }
-    if (password.length < 8) {
-      setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
+      setError('كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، وتشمل حرفاً كبيراً وحرفاً صغيراً ورقماً');
       return;
     }
     setError('');
@@ -68,6 +68,15 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
         const years = Number(yearsOfExperience || '0');
         if (!nationalId || !phoneNumber || isNaN(years)) {
           throw new Error('يرجى إدخال الرقم القومي ورقم الهاتف والخبرة بالشهور/السنوات');
+        }
+        if (!specialization) {
+          throw new Error('يرجى إدخال التخصص');
+        }
+        if (!bio) {
+          throw new Error('يرجى كتابة نبذة مختصرة عنك');
+        }
+        if (!cvUrl) {
+          throw new Error('يرجى إدخال رابط السيرة الذاتية');
         }
         if (years < 0 || years > 100) {
           throw new Error('عدد سنوات الخبرة يجب أن يكون بين 0 و 100');
@@ -120,8 +129,13 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center font-medium animate-fade-in">
-              {error}
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium animate-fade-in">
+              {error.split('\n').map((line, i) => (
+                <div key={i} className="flex items-start gap-2 mb-1 last:mb-0">
+                  <span className="text-red-400 mt-0.5">⚠️</span>
+                  <span>{line}</span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -262,7 +276,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 ))}
               </div>
               {password.length > 0 && (
-                <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور {strengthLabels[strength]}</p>
+                <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور {strengthLabels[strength]} — يجب أن تحتوي على حرف كبير وحرف صغير ورقم</p>
               )}
             </div>
 
