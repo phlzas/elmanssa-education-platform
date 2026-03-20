@@ -94,7 +94,11 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
           avatarUrl
         });
       } else {
-        await signup(fullName, email, password, accountType);
+        await signup(fullName, email, password, accountType, {
+          phoneNumber: phoneNumber || undefined,
+          nationalId: nationalId || undefined,
+          avatarUrl: avatarUrl || undefined
+        });
       }
       // App.tsx auto-redirects via useEffect on auth state change
     } catch (err: any) {
@@ -280,28 +284,32 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
               )}
             </div>
 
+            {/* Optional Fields for All Users */}
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-[#034289] mb-2">الرقم القومي (اختياري)</label>
+                <input
+                  type="text"
+                  value={nationalId}
+                  onChange={(e) => setNationalId(e.target.value)}
+                  placeholder="أدخل رقمك القومي"
+                  className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[#034289] mb-2">رقم الهاتف (اختياري)</label>
+                <input
+                  type="text"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="01xxxxxxxxx"
+                  className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                />
+              </div>
+            </div>
+
             {accountType === 'teacher' && (
               <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">الرقم القومي</label>
-                  <input
-                    type="text"
-                    value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value)}
-                    placeholder="أدخل رقمك القومي"
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">رقم الهاتف</label>
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="01xxxxxxxxx"
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
-                </div>
                 <div>
                   <label className="block text-sm font-bold text-[#034289] mb-2">سنوات الخبرة</label>
                   <input

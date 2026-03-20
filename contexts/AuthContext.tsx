@@ -164,11 +164,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(newUser);
     }, []);
 
-    const signup = useCallback(async (name: string, email: string, password: string, role: AccountType) => {
+    const signup = useCallback(async (name: string, email: string, password: string, role: AccountType, metadata?: {
+        phoneNumber?: string;
+        nationalId?: string;
+        avatarUrl?: string;
+        bio?: string;
+    }) => {
         const res = await fetch(`${API_BASE}/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, role })
+            body: JSON.stringify({ name, email, password, role, ...metadata })
         });
 
         const data = await res.json();
