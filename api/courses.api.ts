@@ -11,15 +11,15 @@ export function getCourses(params?: { category?: string; level?: string; search?
     if (params?.page) qs.append("page", String(params.page));
     if (params?.per_page) qs.append("per_page", String(params.per_page));
     const query = qs.toString();
-    return apiRequest(`/courses${query ? `?${query}` : ""}`);
+    return apiRequest(`/subjects${query ? `?${query}` : ""}`);
 }
 
 export function getCourse(id: number | string) {
-    return apiRequest(`/courses/${id}`);
+    return apiRequest(`/subjects/${id}`);
 }
 
 export function getPopularCourses() {
-    return apiRequest("/courses/popular");
+    return apiRequest("/subjects/popular");
 }
 
 export function createCourse(data: {
@@ -32,18 +32,18 @@ export function createCourse(data: {
     price?: number;
     imageUrl?: string;
 }) {
-    return apiRequest("/courses", {
+    return apiRequest("/subjects", {
         method: "POST",
         body: JSON.stringify(data),
     });
 }
 
 export function getReviews(courseId: number | string) {
-    return apiRequest(`/courses/${courseId}/reviews`);
+    return apiRequest(`/subjects/${courseId}/reviews`);
 }
 
 export function createReview(courseId: number | string, data: { rating: number; comment?: string }) {
-    return apiRequest(`/courses/${courseId}/reviews`, {
+    return apiRequest(`/subjects/${courseId}/reviews`, {
         method: "POST",
         body: JSON.stringify(data),
     });
