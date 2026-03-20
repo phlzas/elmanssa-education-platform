@@ -5,6 +5,8 @@ export async function simulatePayment(courseId: number) {
     const order = await createOrder({
         courseId,
         paymentMethod: "mock",
+        billingFullName: "",
+        billingEmail: ""
     });
 
     // 2. Simulate payment processing delay

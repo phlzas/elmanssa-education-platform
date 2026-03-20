@@ -1,54 +1,108 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+
+// ── URL ↔ Page mapping ────────────────────────────────────────
+const PATH_TO_PAGE: Record<string, Page> = {
+  '/': 'home',
+  '/courses': 'courses',
+  '/signup': 'signup',
+  '/login': 'login',
+  '/course': 'course-detail',
+  '/about': 'about',
+  '/live-stream': 'live-stream',
+  '/ai': 'ai',
+  '/pricing': 'pricing',
+  '/blog': 'blog',
+  '/support': 'support',
+  '/privacy': 'privacy',
+  '/dashboard': 'dashboard',
+  '/contact': 'contact',
+  '/instructor': 'instructor',
+  '/checkout': 'checkout',
+  '/payment-success': 'payment-success',
+  '/watch': 'video-viewer',
+  '/teacher': 'teacher-dashboard',
+  '/admin': 'admin-dashboard',
+};
+
+const PAGE_TO_PATH: Record<Page, string> = Object.fromEntries(
+  Object.entries(PATH_TO_PAGE).map(([path, page]) => [page, path])
+) as Record<Page, string>;
+
+function parsePath(): { page: Page; courseId: string | null } {
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  // match /course/123 or /watch/123 or /checkout/123 etc.
+  const match = path.match(/^(\/[^/]+)(?:\/(.+))?$/);
+  const base = match?.[1] ?? '/';
+  const id = match?.[2] ?? new URLSearchParams(window.location.search).get('id');
+  const page = PATH_TO_PAGE[base] ?? 'home';
+  return { page, courseId: id };
+}
+// Eagerly loaded — needed on every page or on initial render
 import Header from './components/Header';
-import Hero from './components/Hero';
-import CoursesPage from './components/CoursesPage';
-import SignUpForm from './components/SignUpForm';
 import Footer from './components/Footer';
+import Hero from './components/Hero';
 import Stats from './components/Stats';
 import Features from './components/Features';
 import PopularCourses from './components/PopularCourses';
 import TeacherCTA from './components/TeacherCTA';
 import Testimonials from './components/Testimonials';
-import LoginPage from './components/LoginPage';
-import CourseDetailPage from './components/CourseDetailPage';
-import AboutPage from './components/AboutPage';
-import LiveStreamPage from './components/LiveStreamPage';
-import AIPage from './components/AIPage';
-import PricingPage from './components/PricingPage';
-import BlogPage from './components/BlogPage';
-import SupportPage from './components/SupportPage';
-import PrivacyPage from './components/PrivacyPage';
-import StudentDashboard from './components/StudentDashboard';
-import ContactPage from './components/ContactPage';
-import InstructorProfile from './components/InstructorProfile';
-import CheckoutPage from './components/CheckoutPage';
-import PaymentSuccessPage from './components/PaymentSuccessPage';
-import VideoViewer from './components/VideoViewer';
-import TeacherDashboard from './components/TeacherDashboard';
 import { useAuth } from './contexts/AuthContext';
 import ToastContainer from './contexts/ToastContext';
+
+// Lazily loaded — split into separate chunks, loaded on demand
+const CoursesPage = React.lazy(() => import('./components/CoursesPage'));
+const SignUpForm = React.lazy(() => import('./components/SignUpForm'));
+const LoginPage = React.lazy(() => import('./components/LoginPage'));
+const CourseDetailPage = React.lazy(() => import('./components/CourseDetailPage'));
+const AboutPage = React.lazy(() => import('./components/AboutPage'));
+const LiveStreamPage = React.lazy(() => import('./components/LiveStreamPage'));
+const AIPage = React.lazy(() => import('./components/AIPage'));
+const PricingPage = React.lazy(() => import('./components/PricingPage'));
+const BlogPage = React.lazy(() => import('./components/BlogPage'));
+const SupportPage = React.lazy(() => import('./components/SupportPage'));
+const PrivacyPage = React.lazy(() => import('./components/PrivacyPage'));
+const StudentDashboard = React.lazy(() => import('./components/StudentDashboard'));
+const ContactPage = React.lazy(() => import('./components/ContactPage'));
+const InstructorProfile = React.lazy(() => import('./components/InstructorProfile'));
+const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
+const PaymentSuccessPage = React.lazy(() => import('./components/PaymentSuccessPage'));
+const VideoViewer = React.lazy(() => import('./components/VideoViewer'));
+const TeacherDashboard = React.lazy(() => import('./components/TeacherDashboard'));
 
 export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard';
 export type AccountType = 'student' | 'teacher' | 'admin';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const initial = parsePath();
+  const [currentPage, setCurrentPage] = useState<Page>(initial.page);
   const [initialAccountType, setInitialAccountType] = useState<AccountType>('student');
-  const [selectedCourseId, setSelectedCourseId] = useState<number | string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | string | null>(initial.courseId);
   const [initialDashboardTab, setInitialDashboardTab] = useState<string | undefined>(undefined);
   const { user, isLoggedIn } = useAuth();
   const prevLoggedIn = useRef(isLoggedIn);
 
+  // Handle browser back/forward
+  useEffect(() => {
+    const onPop = () => {
+      const { page, courseId } = parsePath();
+      setCurrentPage(page);
+      if (courseId) setSelectedCourseId(courseId);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   // Auto-redirect on login/logout
   useEffect(() => {
     if (isLoggedIn && !prevLoggedIn.current && user) {
-      // Just logged in — navigate to dashboard based on role
       const target: Page = user.role === 'admin' ? 'admin-dashboard' : (user.role === 'teacher' ? 'teacher-dashboard' : 'dashboard');
+      const path = PAGE_TO_PATH[target] ?? '/';
+      window.history.pushState({ page: target }, '', path);
       setCurrentPage(target);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (!isLoggedIn && prevLoggedIn.current) {
-      // Just logged out — go home
+      window.history.pushState({ page: 'home' }, '', '/');
       setCurrentPage('home');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -59,11 +113,16 @@ const App: React.FC = () => {
     if (page === 'signup' && payload?.accountType) {
       setInitialAccountType(payload.accountType);
     }
-    if (payload?.courseId) {
-      setSelectedCourseId(payload.courseId);
-    }
+    const courseId = payload?.courseId ?? null;
+    if (courseId) setSelectedCourseId(courseId);
     setInitialDashboardTab(payload?.tab);
     setCurrentPage(page);
+
+    // Build URL
+    const basePath = PAGE_TO_PATH[page] ?? '/';
+    const url = courseId ? `${basePath}/${courseId}` : basePath;
+    window.history.pushState({ page, courseId }, '', url);
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -81,7 +140,7 @@ const App: React.FC = () => {
           </>
         );
       case 'courses':
-        return <CoursesPage onNavigate={navigateTo} />;
+        return <CoursesPage onNavigate={navigateTo} isTeacher={user?.role === 'teacher'} />;
       case 'signup':
         return <SignUpForm initialAccountType={initialAccountType} onNavigate={navigateTo} />;
       case 'login':
@@ -143,7 +202,13 @@ const App: React.FC = () => {
           <Header onNavigate={navigateTo} currentPage={currentPage} />
         )}
         <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' ? 'pt-[82px]' : ''}`}>
-          {renderPage()}
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="w-10 h-10 border-4 border-[#034289]/20 border-t-[#034289] rounded-full animate-spin" />
+            </div>
+          }>
+            {renderPage()}
+          </Suspense>
         </main>
         {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && (
           <Footer onNavigate={navigateTo} />

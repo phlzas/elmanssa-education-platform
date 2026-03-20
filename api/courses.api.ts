@@ -3,12 +3,13 @@ import { Course, Lecture, CurriculumSection } from "../types";
 
 // ─── Raw API calls ───────────────────────────────────────────
 
-export function getCourses(params?: { category?: string; level?: string; search?: string; page?: number }) {
+export function getCourses(params?: { category?: string; level?: string; search?: string; page?: number; per_page?: number }) {
     const qs = new URLSearchParams();
     if (params?.category) qs.append("category", params.category);
     if (params?.level) qs.append("level", params.level);
     if (params?.search) qs.append("search", params.search);
     if (params?.page) qs.append("page", String(params.page));
+    if (params?.per_page) qs.append("per_page", String(params.per_page));
     const query = qs.toString();
     return apiRequest(`/courses${query ? `?${query}` : ""}`);
 }

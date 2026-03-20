@@ -25,9 +25,9 @@ dist-ssr
 *.json
 *.txt
 *.db
+*.png
 *.cjs
 *.js
-system prompt.md
 .agent/
 .qodo/
 .kiro/

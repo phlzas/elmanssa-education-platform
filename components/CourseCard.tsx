@@ -8,15 +8,16 @@ import UsersIcon from './icons/UsersIcon';
 interface CourseCardProps {
   course: Course;
   onClick?: () => void;
+  onEnroll?: () => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
+const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, onEnroll }) => {
   const isFree = course.isFree === true || course.price === 0;
 
   return (
-    <div className="group card-premium bg-white border border-[#D2E1D9]/50 rounded-2xl overflow-hidden flex flex-col hover:border-[#4F8751]/30 transition-all duration-500 cursor-pointer" onClick={onClick}>
+    <div className="group card-premium bg-white border border-[#D2E1D9]/50 rounded-2xl overflow-hidden flex flex-col hover:border-[#4F8751]/30 transition-all duration-500">
       {/* Image Container */}
-      <div className="course-image-wrapper relative h-52 overflow-hidden">
+      <div className="course-image-wrapper relative h-52 overflow-hidden cursor-pointer" onClick={onClick}>
         <img
           className="h-full w-full object-cover transform group-hover:scale-110 transition-transform duration-700"
           src={course.imageUrl}
@@ -39,20 +40,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
             </span>
           </div>
         )}
-
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#034289]/80 via-[#034289]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center p-6">
-          <button className="transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-100 px-6 py-3 bg-white text-[#034289] font-bold rounded-xl hover:bg-[#D2E1D9] flex items-center gap-2">
-            <span>معاينة الدورة</span>
-            <svg className="w-5 h-5 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </button>
-        </div>
       </div>
 
       {/* Content */}
-      <div className="p-6 flex-grow flex flex-col">
+      <div className="p-6 flex-grow flex flex-col cursor-pointer" onClick={onClick}>
         {/* Instructor */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#034289] to-[#4F8751] flex items-center justify-center text-white font-bold text-sm shadow-md">
@@ -99,9 +90,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-6 bg-gradient-to-br from-[#D2E1D9]/20 to-[#D2E1D9]/10 border-t border-[#D2E1D9]/50 flex items-center justify-between">
-        <div>
+      {/* Footer — price + action buttons */}
+      <div className="p-6 bg-gradient-to-br from-[#D2E1D9]/20 to-[#D2E1D9]/10 border-t border-[#D2E1D9]/50">
+        {/* Price */}
+        <div className="mb-4">
           {isFree ? (
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-[#4F8751]">مجاني</span>
@@ -114,9 +106,22 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
             </div>
           )}
         </div>
-        <button className="btn-primary px-6 py-3 text-sm font-bold text-white rounded-xl shadow-lg">
-          <span className="relative z-10">سجل الآن</span>
-        </button>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={onClick}
+            className="flex-1 px-4 py-2.5 border-2 border-[#034289] text-[#034289] font-bold rounded-xl hover:bg-[#034289] hover:text-white transition-all duration-200 text-sm"
+          >
+            عرض التفاصيل
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEnroll ? onEnroll() : onClick?.(); }}
+            className="flex-1 btn-primary px-4 py-2.5 text-sm font-bold text-white rounded-xl shadow-lg"
+          >
+            <span className="relative z-10">سجل الآن</span>
+          </button>
+        </div>
       </div>
     </div>
   );

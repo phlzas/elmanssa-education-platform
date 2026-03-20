@@ -10,13 +10,66 @@ interface PopularCoursesProps {
   onNavigate: (page: Page) => void;
 }
 
+const FALLBACK_COURSES: Course[] = [
+  {
+    id: 1,
+    title: 'تطوير الويب Full Stack',
+    category: 'برمجة',
+    description: 'تعلم تطوير الويب من الصفر حتى الاحتراف باستخدام أحدث التقنيات',
+    instructorName: 'أحمد محمد',
+    rating: 4.9,
+    duration: 40,
+    lecturesCount: 120,
+    level: 'مبتدئ',
+    language: 'العربية',
+    students: 3200,
+    price: 299,
+    isFree: false,
+    imageUrl: '/assets/courses/web_development_course_cover_1774214768064.png',
+  },
+  {
+    id: 2,
+    title: 'تصميم واجهات المستخدم UI/UX',
+    category: 'تصميم',
+    description: 'احترف تصميم تجربة المستخدم وواجهات التطبيقات الحديثة',
+    instructorName: 'سارة العلي',
+    rating: 4.8,
+    duration: 30,
+    lecturesCount: 85,
+    level: 'متوسط',
+    language: 'العربية',
+    students: 2100,
+    price: 249,
+    isFree: false,
+    imageUrl: '/assets/courses/ui_ux_cover_1774214868681.png',
+  },
+  {
+    id: 3,
+    title: 'التسويق الرقمي والسوشيال ميديا',
+    category: 'تسويق',
+    description: 'استراتيجيات التسويق الرقمي وإدارة منصات التواصل الاجتماعي',
+    instructorName: 'خالد الشمري',
+    rating: 4.7,
+    duration: 25,
+    lecturesCount: 70,
+    level: 'مبتدئ',
+    language: 'العربية',
+    students: 1800,
+    price: 199,
+    isFree: false,
+    imageUrl: '/assets/courses/social_media_cover_1774214883097.png',
+  },
+];
+
 const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<Course[]>(FALLBACK_COURSES);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetchCourses().then(result => setCourses(result.data || []));
+    fetchCourses().then(result => {
+      if (result.data && result.data.length > 0) setCourses(result.data);
+    });
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {

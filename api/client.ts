@@ -1,5 +1,14 @@
 import { API_BASE } from "../config/api.config";
-import { getToken } from "../utils/token";
+import { getToken, clearToken } from "../utils/token";
+
+function extractErrorMessage(body: any, status: number): string {
+    return (
+        body?.error?.message ||
+        body?.message ||
+        body?.title ||
+        `Request failed (${status})`
+    );
+}
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
     const token = getToken();
@@ -13,14 +22,17 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
         },
     });
 
+    if (response.status === 401) {
+        clearToken();
+        window.dispatchEvent(new CustomEvent("auth:expired"));
+        const err = new Error("انتهت صلاحية الجلسة");
+        (err as any).status = 401;
+        throw err;
+    }
+
     if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        const message =
-            errorBody?.error?.message ||
-            errorBody?.message ||
-            errorBody?.title ||
-            `Request failed (${response.status})`;
-        const err = new Error(message);
+        const err = new Error(extractErrorMessage(errorBody, response.status));
         (err as any).status = response.status;
         throw err;
     }
