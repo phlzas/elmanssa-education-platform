@@ -23,10 +23,16 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
         }
     ]);
     const [inputValue, setInputValue] = useState('');
-    const chatEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (chatContainerRef.current) {
+            const { scrollHeight, clientHeight } = chatContainerRef.current;
+            chatContainerRef.current.scrollTo({
+                top: scrollHeight - clientHeight,
+                behavior: 'smooth'
+            });
+        }
     };
 
     useEffect(() => {
@@ -130,8 +136,8 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                                     ].map((step, idx) => (
                                         <div key={idx} className="relative flex items-start gap-4 pb-6 last:pb-0">
                                             <div className={`relative z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${step.status === 'completed' ? 'theme-bg-emerald border-emerald-500 text-white' :
-                                                    step.status === 'current' ? 'bg-white border-[#034289] text-[#034289]' :
-                                                        'bg-[#F8FAFA] border-gray-300 text-gray-300'
+                                                step.status === 'current' ? 'bg-white border-[#034289] text-[#034289]' :
+                                                    'bg-[#F8FAFA] border-gray-300 text-gray-300'
                                                 }`}>
                                                 {step.status === 'completed' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                                 {step.status === 'current' && <div className="w-2 h-2 bg-[#034289] rounded-full animate-pulse"></div>}
@@ -209,7 +215,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                             </div>
 
                             {/* Messages */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white to-[#F8FAFA]">
+                            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white to-[#F8FAFA] scroll-smooth">
                                 {messages.map((msg) => (
                                     <div key={msg.id} className={`flex items-start gap-4 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.sender === 'user' ? 'bg-[#034289] text-white' : 'bg-gradient-to-br from-[#034289] to-[#4F8751] text-white'
@@ -222,8 +228,8 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                                         </div>
 
                                         <div className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${msg.sender === 'user'
-                                                ? 'bg-[#034289] text-white rounded-tl-none'
-                                                : 'bg-white border border-[#D2E1D9] text-[#034289] rounded-tr-none'
+                                            ? 'bg-[#034289] text-white rounded-tl-none'
+                                            : 'bg-white border border-[#D2E1D9] text-[#034289] rounded-tr-none'
                                             }`}>
                                             {msg.sender === 'ai' && (
                                                 <div className="flex items-center gap-1 text-[#4F8751] text-xs font-bold mb-1">
@@ -238,7 +244,6 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                                         </div>
                                     </div>
                                 ))}
-                                <div ref={chatEndRef} />
                             </div>
 
                             {/* Suggested Inputs */}

@@ -41,10 +41,16 @@ const UPCOMING_STREAMS: UpcomingStream[] = [
 const LiveStreamPage: React.FC<LiveStreamPageProps> = ({ onNavigate }) => {
     const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT);
     const [newMessage, setNewMessage] = useState('');
-    const chatEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (chatContainerRef.current) {
+            const { scrollHeight, clientHeight } = chatContainerRef.current;
+            chatContainerRef.current.scrollTo({
+                top: scrollHeight - clientHeight,
+                behavior: 'smooth'
+            });
+        }
     };
 
     useEffect(() => {
@@ -181,7 +187,7 @@ const LiveStreamPage: React.FC<LiveStreamPageProps> = ({ onNavigate }) => {
                             </div>
 
                             {/* Messages Area */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
                                 {messages.map((msg) => (
                                     <div key={msg.id} className={`flex items-start gap-3 ${msg.isMe ? 'flex-row-reverse' : ''}`}>
                                         <img src={msg.avatar} alt={msg.user} className="w-8 h-8 rounded-full border border-[#D2E1D9]" />
@@ -197,7 +203,6 @@ const LiveStreamPage: React.FC<LiveStreamPageProps> = ({ onNavigate }) => {
                                         </div>
                                     </div>
                                 ))}
-                                <div ref={chatEndRef} />
                             </div>
 
                             {/* Input Area */}
