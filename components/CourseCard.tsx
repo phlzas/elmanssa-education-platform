@@ -7,13 +7,14 @@ import UsersIcon from './icons/UsersIcon';
 
 interface CourseCardProps {
   course: Course;
+  onClick?: () => void;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
+const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
   const isFree = course.price === 'free';
 
   return (
-    <div className="group card-premium bg-white border border-[#D2E1D9]/50 rounded-2xl overflow-hidden flex flex-col hover:border-[#4F8751]/30 transition-all duration-500">
+    <div className="group card-premium bg-white border border-[#D2E1D9]/50 rounded-2xl overflow-hidden flex flex-col hover:border-[#4F8751]/30 transition-all duration-500 cursor-pointer" onClick={onClick}>
       {/* Image Container */}
       <div className="course-image-wrapper relative h-52 overflow-hidden">
         <img

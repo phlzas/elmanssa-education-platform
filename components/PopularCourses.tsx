@@ -78,7 +78,10 @@ const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
                 }`}
               style={{ transitionDelay: `${(index + 1) * 150}ms` }}
             >
-              <CourseCard course={course} />
+              <CourseCard
+                course={course}
+                onClick={() => onNavigate('course-detail', { courseId: course.id })}
+              />
             </div>
           ))}
         </div>

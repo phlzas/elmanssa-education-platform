@@ -3,7 +3,13 @@ import React, { useState } from 'react';
 import { MOCK_COURSES, FILTER_LEVELS, FILTER_PRICES } from '../constants';
 import CourseCard from './CourseCard';
 
-const CoursesPage: React.FC = () => {
+import { Page } from '../App';
+
+interface CoursesPageProps {
+  onNavigate?: (page: Page, payload?: any) => void;
+}
+
+const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFiltersOnMobile, setShowFiltersOnMobile] = useState(false);
 
@@ -40,8 +46,8 @@ const CoursesPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pr-14 pl-4 py-4 bg-white border-2 border-[#D2E1D9] rounded-2xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 shadow-lg transition-all duration-300 text-lg"
               />
-              <button className="absolute left-2 top-1/2 -translate-y-1/2 btn-primary px-6 py-2.5 text-white font-bold rounded-xl">
-                <span className="relative z-10">بحث</span>
+              <button className="absolute left-2 top-1/4 -translate-y-1/6 btn-primary px-6 py-2 text-white font-bold rounded-xl">
+                <span className="relative z-10">ب حث</span>
               </button>
             </div>
           </div>
@@ -191,7 +197,10 @@ const CoursesPage: React.FC = () => {
                   className="animate-fade-in-up"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <CourseCard course={course} />
+                  <CourseCard
+                    course={course}
+                    onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.id })}
+                  />
                 </div>
               ))}
             </div>
