@@ -53,8 +53,8 @@ export function createReview(courseId: number | string, data: { rating: number; 
 
 function mapCourseItem(item: any): Course {
     return {
-        id: Number(item.id),
-        guidId: item.guidId || undefined,
+        id: Number(item.id) || 0,
+        guidId: typeof item.id === 'string' && item.id.includes('-') ? item.id : (item.guidId || undefined),
         title: item.title ?? '',
         category: item.category ?? 'عام',
         description: item.description ?? '',
@@ -109,7 +109,7 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
     }
 };
 
-export const fetchCourseById = async (id: number): Promise<{ data: Course | null; error?: string }> => {
+export const fetchCourseById = async (id: number | string): Promise<{ data: Course | null; error?: string }> => {
     try {
         const json = await getCourse(id);
         const item = json.data ?? json;

@@ -16,8 +16,8 @@ const DEBOUNCE_MS = 400;
 
 function mapCourseItem(item: any): Course {
   return {
-    id: Number(item.id),
-    guidId: item.guidId || undefined,
+    id: Number(item.id) || 0,
+    guidId: typeof item.id === 'string' && item.id.includes('-') ? item.id : (item.guidId || undefined),
     title: item.title ?? '',
     category: item.category ?? 'عام',
     description: item.description ?? '',

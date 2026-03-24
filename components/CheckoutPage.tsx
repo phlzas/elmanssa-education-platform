@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchCourseById, createOrder, validateCoupon } from '../services/api';
+import { createOrder, validateCoupon } from '../services/api';
+import { fetchCourseById } from '../api/courses.api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
 import CheckBadgeIcon from './icons/CheckBadgeIcon';

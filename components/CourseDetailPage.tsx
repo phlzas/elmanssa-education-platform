@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { fetchCourseById } from '../services/api';
+import { fetchCourseById } from '../api/courses.api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
 import StarIcon from './icons/StarIcon';

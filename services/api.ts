@@ -32,8 +32,8 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
         const raw = Array.isArray(json) ? json : (json.data ?? []);
         const items = Array.isArray(raw) ? raw : [];
         const data: Course[] = items.map((item: any) => ({
-            id: Number(item.id),
-            guidId: item.guidId || undefined,
+            id: Number(item.id) || 0,
+            guidId: typeof item.id === 'string' && item.id.includes('-') ? item.id : (item.guidId || undefined),
             title: item.title ?? '',
             category: item.category ?? 'عام',
             description: item.description ?? '',
@@ -82,7 +82,8 @@ export const fetchCourseById = async (id: string | number): Promise<{ data: Cour
             : undefined;
 
         const data: Course = {
-            id: Number(item.id),
+            id: Number(item.id) || 0,
+            guidId: typeof item.id === 'string' && item.id.includes('-') ? item.id : (item.guidId || undefined),
             title: item.title ?? '',
             category: item.category ?? 'عام',
             description: item.description ?? '',
