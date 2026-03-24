@@ -48,13 +48,9 @@ export const createOrder = async (
     },
     _token?: string
 ) => {
-    try {
-        const json = await placeOrder(data);
-        return json.data;
-    } catch (error) {
-        console.error('Error creating order', error);
-        throw error;
-    }
+    // Let the error propagate with its original message so callers can show it
+    const json = await placeOrder(data);
+    return json.data;
 };
 
 /**

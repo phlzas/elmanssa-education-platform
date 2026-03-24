@@ -80,6 +80,7 @@ const App: React.FC = () => {
   const [initialAccountType, setInitialAccountType] = useState<AccountType>('student');
   const [selectedCourseId, setSelectedCourseId] = useState<number | string | null>(initial.courseId);
   const [initialDashboardTab, setInitialDashboardTab] = useState<string | undefined>(undefined);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
   const { user, isLoggedIn } = useAuth();
   const prevLoggedIn = useRef(isLoggedIn);
 
@@ -149,6 +150,11 @@ const App: React.FC = () => {
     setInitialDashboardTab(payload?.tab);
     setCurrentPage(page);
 
+    // Increment refresh key whenever navigating to dashboard so it re-fetches
+    if (page === 'dashboard') {
+      setDashboardRefreshKey(k => k + 1);
+    }
+
     // Build URL
     const basePath = PAGE_TO_PATH[page] ?? '/';
     const url = courseId ? `${basePath}/${courseId}` : basePath;
@@ -195,7 +201,7 @@ const App: React.FC = () => {
       case 'privacy':
         return <PrivacyPage onNavigate={navigateTo} />;
       case 'dashboard':
-        return <StudentDashboard onNavigate={navigateTo} initialTab={initialDashboardTab} />;
+        return <StudentDashboard onNavigate={navigateTo} initialTab={initialDashboardTab} refreshKey={dashboardRefreshKey} />;
       case 'video-viewer':
         return <VideoViewer onNavigate={navigateTo} courseId={selectedCourseId} />;
       case 'contact':

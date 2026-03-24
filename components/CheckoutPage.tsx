@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { createOrder, validateCoupon } from '../services/api';
+import { createOrder, validateCoupon } from '../api/orders.api';
 import { fetchCourseById } from '../api/courses.api';
 import { Course } from '../types';
 import { Page, AccountType } from '../App';
+import { useToast } from '../contexts/ToastContext';
 import CheckBadgeIcon from './icons/CheckBadgeIcon';
 import ClockIcon from './icons/ClockIcon';
 import StarIcon from './icons/StarIcon';
@@ -17,6 +18,7 @@ type PaymentMethod = 'card' | 'wallet' | 'bank';
 type CheckoutStep = 1 | 2 | 3;
 
 const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => {
+    const { showToast } = useToast();
     const [course, setCourse] = useState<Course | null>(null);
     const [step, setStep] = useState<CheckoutStep>(1);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
@@ -158,10 +160,16 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
             await createOrder(orderData);
             setIsProcessing(false);
             onNavigate('payment-success' as Page, { courseId });
-        } catch (error) {
+        } catch (error: any) {
             setIsProcessing(false);
-            console.error('Order creation failed:', error);
-            alert('تعذر إنشاء الطلب، يرجى المحاولة مرة أخرى.');
+            const msg = error?.message || 'تعذر إنشاء الطلب، يرجى المحاولة مرة أخرى.';
+            // "already enrolled" is a soft success — navigate to dashboard
+            if (msg.includes('ALREADY_ENROLLED') || msg.includes('مسجل بالفعل')) {
+                showToast('أنت مسجل بالفعل في هذه المادة', 'info');
+                onNavigate('dashboard');
+            } else {
+                showToast(msg, 'error');
+            }
         }
     };
 

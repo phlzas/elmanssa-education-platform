@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Plyr = require('plyr') as typeof import('plyr');
+import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -81,20 +80,30 @@ export const useScreenProtection = () => {
         }
 
         let audioCtx: AudioContext | null = null;
-        try {
-            audioCtx = new AudioContext();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.value = 18500;
-            gain.gain.value = 0.0008;
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-        } catch (_) { /* non-critical */ }
+        const startAudio = () => {
+            if (audioCtx) return;
+            try {
+                audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = 18500;
+                gain.gain.value = 0.0008;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+            } catch (_) { /* non-critical */ }
+        };
+        document.addEventListener('click', startAudio, { once: true });
+        document.addEventListener('keydown', startAudio, { once: true });
 
         return () => {
             document.removeEventListener('visibilitychange', onVisibility);
             document.removeEventListener('keydown', onKey, true);
+            document.removeEventListener('click', startAudio);
+            document.removeEventListener('keydown', startAudio);
             if (navigator.mediaDevices && orig) navigator.mediaDevices.getDisplayMedia = orig;
             audioCtx?.close().catch(() => {});
         };

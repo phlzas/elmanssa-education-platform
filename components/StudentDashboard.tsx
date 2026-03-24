@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface Props {
   onNavigate: (page: Page, payload?: { courseId?: number; tab?: string }) => void;
   initialTab?: string;
+  refreshKey?: number;
 }
 
 type Tab = 'dashboard' | 'courses' | 'profile';
@@ -179,7 +180,7 @@ const Sidebar = ({ activeTab, setTab, user, studentName, studentInitials, onNavi
 };
 
 // ── Main Component ───────────────────────────────────────────
-const StudentDashboard: React.FC<Props> = ({ onNavigate, initialTab }) => {
+const StudentDashboard: React.FC<Props> = ({ onNavigate, initialTab, refreshKey = 0 }) => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>((initialTab as Tab) || 'dashboard');
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -189,10 +190,13 @@ const StudentDashboard: React.FC<Props> = ({ onNavigate, initialTab }) => {
   const [subjects, setSubjects] = useState<any[]>([]);
 
   useEffect(() => {
-    getProgress().then((data: any) => {
+    setIsLoading(true);
+    getProgress().then((res: any) => {
+      // Backend wraps all responses in ApiResponse<T> → { success, data: { ... } }
+      const data = res?.data ?? res;
       if (data) {
         setStats({
-          totalCourses: data.totalCourses || 0,
+          totalCourses: data.totalSubjects || data.totalCourses || 0,
           totalLectures: data.totalLectures || 0,
           completedLectures: data.completedLectures || 0,
           overallProgress: data.overallProgress || 0,
@@ -200,7 +204,7 @@ const StudentDashboard: React.FC<Props> = ({ onNavigate, initialTab }) => {
         if (Array.isArray(data.subjects)) setSubjects(data.subjects);
       }
     }).catch(console.error).finally(() => setIsLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   const studentName = user?.name || 'طالب';
   const studentInitials = studentName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
