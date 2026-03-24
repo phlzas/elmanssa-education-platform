@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { fetchCourses } from '../services/api';
+import { getPopularCourses } from '../api/courses.api';
 import { Course } from '../types';
 import CourseCard from './CourseCard';
 import { Page } from '../App';
@@ -67,9 +67,28 @@ const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    fetchCourses().then(result => {
-      if (result.data && result.data.length > 0) setCourses(result.data);
-    });
+    getPopularCourses().then((json: any) => {
+      const raw = Array.isArray(json) ? json : (json?.data ?? []);
+      const items = (Array.isArray(raw) ? raw : []).map((item: any) => ({
+        id: item.id,
+        guidId: item.id,
+        title: item.title ?? item.name ?? '',
+        category: item.category ?? 'عام',
+        description: item.description ?? '',
+        instructorName: item.instructorName ?? undefined,
+        rating: typeof item.rating === 'number' ? item.rating : 4.5,
+        duration: typeof item.duration === 'number' ? item.duration : undefined,
+        lecturesCount: typeof item.lecturesCount === 'number' ? item.lecturesCount : undefined,
+        level: item.level ?? undefined,
+        language: item.language ?? 'العربية',
+        students: typeof item.studentsCount === 'number' ? item.studentsCount : 0,
+        price: typeof item.price === 'number' ? item.price : 0,
+        isFree: item.price === 0,
+        imageUrl: item.imageUrl || '/assets/courses/default.png',
+        lastUpdated: item.createdAt ?? undefined,
+      }));
+      if (items.length > 0) setCourses(items);
+    }).catch(() => {});
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
