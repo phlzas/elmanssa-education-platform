@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "autoprefixer": "^10.4.27",
+    "build": "^0.1.4",
     "plyr": "^3.8.4",
     "postcss": "^8.5.8",
     "react": "^19.2.4",

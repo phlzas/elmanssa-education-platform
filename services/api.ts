@@ -300,17 +300,12 @@ export const createCourseWithCurriculum = async (data: {
     }>;
 }) => {
     const payload = {
-        title: data.title,
+        name: data.title,       // backend SubjectCreateDTO requires "name"
+        title: data.title,      // also send title as fallback
         description: data.description,
         icon: '📚',
-        category: data.category,
-        duration: data.duration,
-        level: data.level,
-        language: data.language,
-        price: data.price,
-        imageUrl: data.imageUrl,
         levels: data.sections.map((section, idx) => ({
-            title: section.title,
+            name: section.title,  // backend LevelCreateDTO requires "name"
             sortOrder: section.sortOrder ?? idx,
             lectures: section.lectures.map((lec, lecIdx) => ({
                 title: lec.title,
