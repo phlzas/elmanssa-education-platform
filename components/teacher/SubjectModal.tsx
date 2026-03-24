@@ -19,6 +19,8 @@ interface SubjectModalProps {
     setNewSubjectPrice: (price: number) => void;
     newSubjectLevel: string;
     setNewSubjectLevel: (level: string) => void;
+    newSubjectCategory: string;
+    setNewSubjectCategory: (category: string) => void;
     newSubjectImageUrl: string;
     setNewSubjectImageUrl: (url: string) => void;
     newLevels: Level[];
@@ -36,7 +38,8 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
     show, onClose, editingSubject, createStep, setCreateStep,
     newSubjectName, setNewSubjectName, newSubjectDesc, setNewSubjectDesc,
     newSubjectIcon, setNewSubjectIcon, newSubjectPrice, setNewSubjectPrice,
-    newSubjectLevel, setNewSubjectLevel, newSubjectImageUrl, setNewSubjectImageUrl, newLevels,
+    newSubjectLevel, setNewSubjectLevel, newSubjectCategory, setNewSubjectCategory,
+    newSubjectImageUrl, setNewSubjectImageUrl, newLevels,
     addLevel, removeLevel, updateLevelName,
     addLecture, removeLecture, updateLecture, onSave, isSaving = false,
 }) => {
@@ -192,6 +195,32 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                     {FILTER_LEVELS.map(level => (
                                         <option key={level} value={level} style={{ background: '#0d1f3c', color: '#e2e8f0' }}>
                                             {level}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="subject-category" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
+                                    التصنيف *
+                                </label>
+                                <select
+                                    id="subject-category"
+                                    name="subjectCategory"
+                                    value={newSubjectCategory}
+                                    onChange={e => setNewSubjectCategory(e.target.value)}
+                                    style={{
+                                        width: '100%', padding: '12px 16px',
+                                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px', color: '#e2e8f0', fontSize: '15px',
+                                        fontFamily: "'Cairo', sans-serif", outline: 'none',
+                                        cursor: 'pointer',
+                                    }}
+                                    onFocus={e => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)'}
+                                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                                >
+                                    {['عام', 'رياضيات', 'علوم', 'لغة عربية', 'لغة إنجليزية', 'فيزياء', 'كيمياء', 'أحياء', 'تاريخ', 'جغرافيا', 'برمجة', 'فنون', 'تربية دينية'].map(cat => (
+                                        <option key={cat} value={cat} style={{ background: '#0d1f3c', color: '#e2e8f0' }}>
+                                            {cat}
                                         </option>
                                     ))}
                                 </select>

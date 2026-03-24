@@ -145,7 +145,6 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
         if (!validateStep(2)) return;
         setIsProcessing(true);
         try {
-            const token = localStorage.getItem('token') || undefined;
             const orderData = {
                 subjectId: course?.guidId || courseId.toString(),
                 paymentMethod: paymentMethod,
@@ -155,7 +154,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
                 billingPhone: formData.phone
             };
 
-            await createOrder(orderData, token);
+            await createOrder(orderData);
             setIsProcessing(false);
             onNavigate('payment-success' as Page, { courseId });
         } catch (error) {

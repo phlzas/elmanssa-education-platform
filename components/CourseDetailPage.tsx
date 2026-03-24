@@ -8,6 +8,7 @@ import ClockIcon from './icons/ClockIcon';
 import UsersIcon from './icons/UsersIcon';
 import CheckBadgeIcon from './icons/CheckBadgeIcon';
 import PlayIcon from './icons/PlayIcon';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CourseDetailPageProps {
     courseId: string | number;
@@ -17,6 +18,8 @@ interface CourseDetailPageProps {
 const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigate }) => {
     const [course, setCourse] = useState<Course | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'curriculum' | 'reviews'>('overview');
+    const { user } = useAuth();
+    const isTeacher = user?.role === 'teacher';
 
     useEffect(() => {
         fetchCourseById(courseId).then(({ data }) => {
@@ -276,21 +279,26 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                                         )}
                                     </div>
 
-                                    <button
-                                        onClick={() => {
-                                            if (course.isFree || course.price === 0) {
-                                                onNavigate('dashboard');
-                                            } else {
-                                                onNavigate('checkout' as any, { courseId: course.guidId || course.id });
-                                            }
-                                        }}
-                                        className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mb-3 hover:shadow-glow transition-all"
-                                    >
-                                        {(course.isFree || course.price === 0) ? 'سجل مجاناً الآن' : 'اشترِ الآن'}
-                                    </button>
+                                    {isTeacher ? (
+                                        <div className="w-full py-4 text-center text-sm font-semibold text-[#034289]/60 bg-[#F8FAFA] rounded-xl border border-[#D2E1D9] mb-3">
+                                            المدرسون لا يمكنهم شراء الكورسات
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                if (course.isFree || course.price === 0) {
+                                                    onNavigate('dashboard');
+                                                } else {
+                                                    onNavigate('checkout' as any, { courseId: course.guidId || course.id });
+                                                }
+                                            }}
+                                            className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mb-3 hover:shadow-glow transition-all"
+                                        >
+                                            {(course.isFree || course.price === 0) ? 'سجل مجاناً الآن' : 'اشترِ الآن'}
+                                        </button>
+                                    )}
 
-                                    <p className="text-center text-xs text-[#034289]/50 mb-6">30 يوم ضمان استرداد الأموال</p>
-
+                                    {!isTeacher && <p className="text-center text-xs text-[#034289]/50 mb-6">30 يوم ضمان استرداد الأموال</p>}
                                     <div className="space-y-4">
                                         <h5 className="font-bold text-[#034289]">تحتوي هذه الدورة على:</h5>
                                         <ul className="space-y-3 text-sm text-[#034289]/70">

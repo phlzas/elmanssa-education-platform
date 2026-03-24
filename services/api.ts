@@ -174,14 +174,10 @@ export const validateCoupon = async (code: string, subjectId?: string) => {
     }
 };
 
-export const createOrder = async (data: { subjectId: string, paymentMethod: string, couponCode?: string, billingFullName: string, billingEmail: string, billingPhone?: string }, token?: string) => {
+export const createOrder = async (data: { subjectId: string, paymentMethod: string, couponCode?: string, billingFullName: string, billingEmail: string, billingPhone?: string }) => {
     try {
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`${API_BASE_URL}/api/v1/orders`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/orders`, {
             method: 'POST',
-            headers,
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to create order');
@@ -193,15 +189,9 @@ export const createOrder = async (data: { subjectId: string, paymentMethod: stri
     }
 };
 
-export const startAIConversation = async (token?: string) => {
+export const startAIConversation = async () => {
     try {
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`${API_BASE_URL}/api/v1/ai/conversations`, {
-            method: 'POST',
-            headers
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/ai/conversations`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to start AI conversation');
         const json = await res.json();
         return json.data;
@@ -211,14 +201,10 @@ export const startAIConversation = async (token?: string) => {
     }
 };
 
-export const sendAIMessage = async (conversationId: string, message: string, token?: string) => {
+export const sendAIMessage = async (conversationId: string, message: string) => {
     try {
-        const headers: any = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`${API_BASE_URL}/api/v1/ai/conversations/${conversationId}/messages`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/ai/conversations/${conversationId}/messages`, {
             method: 'POST',
-            headers,
             body: JSON.stringify({ message })
         });
         if (!res.ok) throw new Error('Failed to send AI message');
@@ -234,11 +220,9 @@ export const sendAIMessage = async (conversationId: string, message: string, tok
 // Teacher Dashboard APIs - Using COURSES (not subjects)
 // ═══════════════════════════════════════════════════════════
 
-export const fetchTeacherStats = async (token: string) => {
+export const fetchTeacherStats = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/stats`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/stats`);
         if (!res.ok) throw new Error('Failed to fetch teacher stats');
         const json = await res.json();
         return json.data;
@@ -248,23 +232,18 @@ export const fetchTeacherStats = async (token: string) => {
     }
 };
 
-export const pingTeacherAuth = async (token: string) => {
+export const pingTeacherAuth = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher`);
         return res.status === 200;
     } catch {
         return false;
     }
 };
 
-// Fetch teacher's subjects/courses
-export const fetchTeacherCourses = async (token: string) => {
+export const fetchTeacherCourses = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects`);
         if (!res.ok) throw new Error('Failed to fetch teacher subjects');
         const json = await res.json();
         return json.data;
@@ -274,8 +253,7 @@ export const fetchTeacherCourses = async (token: string) => {
     }
 };
 
-// Create a new course (was createTeacherSubject)
-export const createTeacherCourse = async (token: string, data: { 
+export const createTeacherCourse = async (data: { 
     title: string; 
     description?: string; 
     category: string;
@@ -286,12 +264,8 @@ export const createTeacherCourse = async (token: string, data: {
     imageUrl?: string;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to create course');
@@ -304,7 +278,7 @@ export const createTeacherCourse = async (token: string, data: {
 };
 
 // NEW: Create subject with complete curriculum (levels + lectures) in one API call
-export const createCourseWithCurriculum = async (token: string, data: {
+export const createCourseWithCurriculum = async (data: {
     title: string;
     description?: string;
     category: string;
@@ -365,8 +339,7 @@ export const createCourseWithCurriculum = async (token: string, data: {
     return json.data;
 };
 
-// Update subject (was updateTeacherSubject)
-export const updateTeacherCourse = async (token: string, courseId: number, data: { 
+export const updateTeacherCourse = async (courseId: string | number, data: { 
     title?: string; 
     description?: string; 
     category?: string;
@@ -378,13 +351,9 @@ export const updateTeacherCourse = async (token: string, courseId: number, data:
     status?: string;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ title: data.title, description: data.description })
+            body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to update subject');
         const json = await res.json();
@@ -395,12 +364,10 @@ export const updateTeacherCourse = async (token: string, courseId: number, data:
     }
 };
 
-// Delete subject (was deleteTeacherSubject)
-export const deleteTeacherCourse = async (token: string, courseId: number) => {
+export const deleteTeacherCourse = async (courseId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
+            method: 'DELETE'
         });
         if (!res.ok) throw new Error('Failed to delete subject');
         const json = await res.json();
@@ -411,15 +378,10 @@ export const deleteTeacherCourse = async (token: string, courseId: number) => {
     }
 };
 
-// Create section in a course
-export const createCourseSection = async (token: string, courseId: number, data: { title: string; sortOrder?: number }) => {
+export const createCourseSection = async (courseId: number, data: { title: string; sortOrder?: number }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/${courseId}/sections`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/${courseId}/sections`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to create section');
@@ -431,15 +393,10 @@ export const createCourseSection = async (token: string, courseId: number, data:
     }
 };
 
-// Update section
-export const updateCourseSection = async (token: string, sectionId: number, data: { title?: string; sortOrder?: number }) => {
+export const updateCourseSection = async (sectionId: number, data: { title?: string; sortOrder?: number }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to update section');
@@ -451,12 +408,10 @@ export const updateCourseSection = async (token: string, sectionId: number, data
     }
 };
 
-// Delete section
-export const deleteCourseSection = async (token: string, sectionId: number) => {
+export const deleteCourseSection = async (sectionId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
+            method: 'DELETE'
         });
         if (!res.ok) throw new Error('Failed to delete section');
         const json = await res.json();
@@ -467,8 +422,7 @@ export const deleteCourseSection = async (token: string, sectionId: number) => {
     }
 };
 
-// Create lecture in a section
-export const createSectionLecture = async (token: string, sectionId: number, data: { 
+export const createSectionLecture = async (sectionId: number, data: { 
     title: string; 
     duration?: string;
     videoUrl?: string;
@@ -476,12 +430,8 @@ export const createSectionLecture = async (token: string, sectionId: number, dat
     isPreview?: boolean;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}/lectures`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}/lectures`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to create lecture');
@@ -493,8 +443,7 @@ export const createSectionLecture = async (token: string, sectionId: number, dat
     }
 };
 
-// Update lecture
-export const updateSectionLecture = async (token: string, lectureId: number, data: { 
+export const updateSectionLecture = async (lectureId: number, data: { 
     title?: string; 
     duration?: string;
     videoUrl?: string;
@@ -502,12 +451,8 @@ export const updateSectionLecture = async (token: string, lectureId: number, dat
     isPreview?: boolean;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to update lecture');
@@ -519,12 +464,10 @@ export const updateSectionLecture = async (token: string, lectureId: number, dat
     }
 };
 
-// Delete lecture
-export const deleteSectionLecture = async (token: string, lectureId: number) => {
+export const deleteSectionLecture = async (lectureId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
+            method: 'DELETE'
         });
         if (!res.ok) throw new Error('Failed to delete lecture');
         const json = await res.json();
@@ -535,16 +478,14 @@ export const deleteSectionLecture = async (token: string, lectureId: number) => 
     }
 };
 
-export const fetchTeacherStudents = async (token: string, search?: string, page = 1, perPage = 20) => {
+export const fetchTeacherStudents = async (search?: string, page = 1, perPage = 20) => {
     try {
         const params = new URLSearchParams();
         if (search) params.append('search', search);
         params.append('page', page.toString());
         params.append('per_page', perPage.toString());
 
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/students?${params}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/students?${params}`);
         if (!res.ok) throw new Error('Failed to fetch teacher students');
         const json = await res.json();
         return json.data || [];
@@ -554,15 +495,10 @@ export const fetchTeacherStudents = async (token: string, search?: string, page 
     }
 };
 
-// Publish/unpublish subject
-export const publishTeacherSubject = async (token: string, courseId: string, status: string) => {
+export const publishTeacherSubject = async (courseId: string, status: string) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}/publish`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}/publish`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify({ status })
         });
         if (!res.ok) throw new Error('Failed to update subject status');
@@ -584,11 +520,9 @@ export const deleteTeacherSubject = deleteTeacherCourse;
 // Student Dashboard APIs
 // ═══════════════════════════════════════════════════════════
 
-export const fetchStudentProgress = async (token: string) => {
+export const fetchStudentProgress = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/progress`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/progress`);
         if (!res.ok) throw new Error('Failed to fetch student progress');
         const json = await res.json();
         return json.data;
@@ -598,11 +532,9 @@ export const fetchStudentProgress = async (token: string) => {
     }
 };
 
-export const fetchStudentEnrollments = async (token: string) => {
+export const fetchStudentEnrollments = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/enrollments`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/enrollments`);
         if (!res.ok) throw new Error(`Failed to fetch student enrollments: ${res.status} ${res.statusText}`);
         const json = await res.json();
         return json.data || [];
@@ -612,12 +544,9 @@ export const fetchStudentEnrollments = async (token: string) => {
     }
 };
 
-// Fetch student's courses
-export const fetchStudentCourses = async (token: string) => {
+export const fetchStudentCourses = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/courses`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/courses`);
         if (!res.ok) throw new Error('Failed to fetch student courses');
         const json = await res.json();
         return json.data || [];
@@ -627,12 +556,9 @@ export const fetchStudentCourses = async (token: string) => {
     }
 };
 
-// Fetch student course detail
-export const fetchStudentCourseDetail = async (courseId: number, token: string) => {
+export const fetchStudentCourseDetail = async (courseId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/courses/${courseId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/courses/${courseId}`);
         if (!res.ok) throw new Error('Failed to fetch course detail');
         const json = await res.json();
         return json.data;
@@ -642,12 +568,9 @@ export const fetchStudentCourseDetail = async (courseId: number, token: string) 
     }
 };
 
-// Fetch lecture detail for student
-export const fetchStudentLectureDetail = async (lectureId: number, token: string) => {
+export const fetchStudentLectureDetail = async (lectureId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}`);
         if (!res.ok) throw new Error('Failed to fetch lecture detail');
         const json = await res.json();
         return json.data;
@@ -657,19 +580,14 @@ export const fetchStudentLectureDetail = async (lectureId: number, token: string
     }
 };
 
-// Record lecture watch progress
-export const recordLectureWatch = async (token: string, lectureId: number, data: { 
+export const recordLectureWatch = async (lectureId: number, data: { 
     watchedSeconds: number; 
     totalSeconds: number;
     isCompleted?: boolean;
 }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}/watch`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}/watch`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to record watch progress');
@@ -681,12 +599,9 @@ export const recordLectureWatch = async (token: string, lectureId: number, data:
     }
 };
 
-// Fetch lecture transcript
-export const fetchLectureTranscript = async (lectureId: number, token: string) => {
+export const fetchLectureTranscript = async (lectureId: number) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}/transcript`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/lectures/${lectureId}/transcript`);
         if (!res.ok) throw new Error('Failed to fetch transcript');
         const json = await res.json();
         return json.data;
@@ -697,14 +612,11 @@ export const fetchLectureTranscript = async (lectureId: number, token: string) =
 };
 
 
-export const updateStudentProgress = async (token: string, data: { lectureId: string; completed: boolean; progressPct?: number }) => {
+export const updateStudentProgress = async (data: { lectureId: string; completed: boolean; progressPct?: number }) => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/progress`, {
+        const res = await authedFetch(`${API_BASE_URL}/api/v1/student/progress`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         if (!res.ok) throw new Error('Failed to update progress');
@@ -716,44 +628,60 @@ export const updateStudentProgress = async (token: string, data: { lectureId: st
     }
 };
 
-// Legacy function for backward compatibility - fetches subject (teacher-created content)
-// This is used by VideoViewer for older subject-based content
-export const fetchSubjectById = async (id: string, token: string): Promise<{ data: any | null; error?: string }> => {
+// Fetches a subject by Guid ID — maps both curriculumSections and levels shapes
+export const fetchSubjectById = async (id: string): Promise<{ data: any | null; error?: string }> => {
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/student/subjects/${id}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(`${API_BASE_URL}/api/v1/subjects/${id}`);
         if (!res.ok) throw new Error(`Failed to fetch subject: ${res.status} ${res.statusText}`);
         const json = await res.json();
 
         if (json?.data) {
             const item = json.data;
-            const curriculum = Array.isArray(item.levels)
-                ? item.levels.map((lv: any) => ({
-                    section: lv.title ?? lv.name ?? '',
-                    lectures: Array.isArray(lv.lectures)
-                        ? lv.lectures.map((l: any) => ({
-                            id: Number(l.id),
+
+            // Handle both response shapes:
+            // 1. curriculumSections[].title + lectures[] (CoursesController / existing endpoint)
+            // 2. levels[].name + lectures[] (SubjectsController / teacher endpoint)
+            let curriculum: any[] | undefined;
+
+            if (Array.isArray(item.curriculumSections) && item.curriculumSections.length > 0) {
+                curriculum = item.curriculumSections.map((s: any) => ({
+                    section: s.title ?? s.name ?? '',
+                    lectures: Array.isArray(s.lectures)
+                        ? s.lectures.map((l: any) => ({
+                            id: l.id,
                             title: l.title ?? '',
-                            durationSeconds: typeof l.durationSeconds === 'number' ? l.durationSeconds : undefined,
+                            duration: l.duration || l.durationSeconds
+                                ? `${Math.floor((l.durationSeconds || 0) / 60)}:${String((l.durationSeconds || 0) % 60).padStart(2, '0')}`
+                                : '10:00',
                             videoUrl: l.videoUrl || undefined,
                         }))
                         : []
-                }))
-                : undefined;
+                }));
+            } else if (Array.isArray(item.levels)) {
+                curriculum = item.levels.map((lv: any) => ({
+                    section: lv.name ?? lv.title ?? '',
+                    lectures: Array.isArray(lv.lectures)
+                        ? lv.lectures.map((l: any) => ({
+                            id: l.id,
+                            title: l.title ?? '',
+                            duration: l.duration || '10:00',
+                            videoUrl: l.videoUrl || undefined,
+                        }))
+                        : []
+                }));
+            }
 
             const data = {
-                id: Number(item.id),
+                id: item.guidId || item.id,
                 title: item.title || item.name || '',
-                category: 'Subject',
+                category: item.category || 'Subject',
                 description: item.description || '',
-                instructorId: typeof item.teacherId === 'number' ? item.teacherId : undefined,
-                instructorName: item.teacherName ?? undefined,
-                rating: 4.5,
+                instructorName: item.instructorName ?? undefined,
+                rating: item.rating ?? 4.5,
                 students: item.studentsCount || 0,
-                price: 0,
-                isFree: true,
-                imageUrl: '/assets/courses/default.png',
+                price: item.price ?? 0,
+                isFree: (item.price ?? 0) === 0,
+                imageUrl: item.imageUrl || '/assets/courses/default.png',
                 lastUpdated: item.createdAt,
                 curriculum,
             };

@@ -30,8 +30,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
     useEffect(() => {
         const initConv = async () => {
             try {
-                const token = localStorage.getItem('token') || undefined;
-                const data = await startAIConversation(token);
+                const data = await startAIConversation();
                 if (data && data.id) {
                     setConversationId(data.id);
                 }
@@ -72,7 +71,6 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
         setInputValue('');
 
         if (conversationId) {
-            const token = localStorage.getItem('token') || undefined;
             // Indicate loading typing...
             const loadingId = Date.now() + 1;
             setMessages(prev => [...prev, {
@@ -82,7 +80,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                 timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
             }]);
 
-            sendAIMessage(conversationId, userText, token)
+            sendAIMessage(conversationId, userText)
                 .then((res) => {
                     const aiText = res?.message || res?.text || res?.content || 'عذراً، حدث خطأ أثناء معالجة الرد.';
                     setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, text: aiText } : m));

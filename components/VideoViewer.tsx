@@ -1,175 +1,168 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Page } from '../App';
-import { fetchCourseById, fetchStudentEnrollments, fetchSubjectById } from '../services/api';
+import { fetchCourseById, fetchSubjectById } from '../services/api';
+import { validateSession } from '../api/auth.api';
 import { useAuth } from '../contexts/AuthContext';
+import {
+    Lecture, Subject,
+    useScreenProtection, Watermark, RecordingBlocker,
+    PlyrYouTube, getVideoType, extractYouTubeId, getDriveEmbedUrl,
+} from './videoViewerUtils';
 
-const TOKEN_KEY = 'elmanssa_auth_token';
+const FONT = "'Cairo', sans-serif";
 
 interface VideoViewerProps {
     onNavigate: (page: Page, payload?: { courseId?: number | string }) => void;
     courseId?: number | string | null;
-    lectureData?: {
-        subjectName: string;
-        lectureName: string;
-        lectureIndex: number;
-        subjectIndex: number;
-    };
+    lectureData?: { subjectName: string; lectureName: string; lectureIndex: number; subjectIndex: number };
 }
 
-// Same data structure as dashboard for consistency
-interface Lecture {
-    id: string;
-    title: string;
-    duration: string;
-    videoUrl?: string;
-    completed: boolean;
-}
+// ── Loading state ─────────────────────────────────────────────────────────────
+const LoadingScreen: React.FC = () => (
+    <div dir="rtl" style={{ display: 'flex', minHeight: '100vh', background: '#0a0f1e', fontFamily: FONT, alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" style={{ animation: 'spin 1s linear infinite' }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round" />
+            </svg>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 600, marginTop: '16px' }}>جاري تحميل المحاضرة...</div>
+        </div>
+    </div>
+);
 
-interface Subject {
-    id: string;
-    name: string;
-    instructor: string;
-    instructorAvatar: string;
-    avatarBg: string;
-    lectureCount: string;
-    icon: string;
-    lectures: Lecture[];
-}
+// ── Empty state ───────────────────────────────────────────────────────────────
+const EmptyScreen: React.FC<{ hasSubjects: boolean; onBack: () => void }> = ({ hasSubjects, onBack }) => (
+    <div dir="rtl" style={{ display: 'flex', minHeight: '100vh', background: '#0a0f1e', fontFamily: FONT, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1">
+            <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" strokeLinecap="round" />
+        </svg>
+        <div style={{ color: '#e2e8f0', fontSize: '20px', fontWeight: 700 }}>
+            {hasSubjects ? 'لا توجد محاضرات بعد' : 'لم يتم العثور على المادة'}
+        </div>
+        <div style={{ color: '#64748b', fontSize: '14px' }}>
+            {hasSubjects ? 'لم يقم المعلم بإضافة محاضرات لهذه المادة حتى الآن' : 'تحقق من الرابط أو عد إلى لوحة التحكم'}
+        </div>
+        <button onClick={onBack} style={{ marginTop: '8px', padding: '10px 28px', borderRadius: '10px', background: 'linear-gradient(135deg, #0ea5e9, #2563eb)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, fontFamily: FONT }}>
+            العودة للوحة التحكم
+        </button>
+    </div>
+);
 
-const getGoogleDriveEmbedUrl = (url: string) => {
-    if (!url) return '';
-
-    // If it's already a DrivePlyr link, return it
-    if (url.includes('sh20raj.github.io/DrivePlyr')) return url;
-
-    // Regex to extract Google Drive ID
-    const driveRegex = /(?:https?:\/\/)?(?:drive\.google\.com\/(?:file\/l\/|file\/d\/|open\?id=)|(?:docs\.google\.com\/(?:file\/d\/|open\?id=)))([a-zA-Z0-9_-]+)/;
-    const match = url.match(driveRegex);
-
-    if (match && match[1]) {
-        return `https://sh20raj.github.io/DrivePlyr/plyr.html?id=${match[1]}`;
-    }
-
-    // Fallback for YouTube or other embeddable links
-    if (url.includes('youtube.com/watch?v=')) {
-        const id = url.split('v=')[1]?.split('&')[0];
-        return `https://www.youtube.com/embed/${id}`;
-    }
-    if (url.includes('youtu.be/')) {
-        const id = url.split('youtu.be/')[1]?.split('?')[0];
-        return `https://www.youtube.com/embed/${id}`;
-    }
-
-    return url;
+// ── Video area ────────────────────────────────────────────────────────────────
+const VideoArea: React.FC<{ lecture: Lecture; watermarkLabel: string; sessionId: string; isRecording: boolean }> = ({ lecture, watermarkLabel, sessionId, isRecording }) => {
+    const vtype = lecture.videoUrl ? getVideoType(lecture.videoUrl) : null;
+    return (
+        <div style={{ flex: 1, background: '#000', position: 'relative', minHeight: 0 }} onContextMenu={e => e.preventDefault()}>
+            <Watermark label={watermarkLabel} sessionId={sessionId} />
+            {isRecording && <RecordingBlocker />}
+            {lecture.videoUrl && vtype === 'youtube' ? (() => {
+                const ytId = extractYouTubeId(lecture.videoUrl!);
+                return ytId
+                    ? <PlyrYouTube key={lecture.id} videoId={ytId} />
+                    : <CenteredMsg>رابط يوتيوب غير صالح</CenteredMsg>;
+            })() : lecture.videoUrl ? (
+                <iframe key={lecture.id} src={getDriveEmbedUrl(lecture.videoUrl)} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} allowFullScreen allow="autoplay; fullscreen" title={lecture.title} />
+            ) : (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', background: 'radial-gradient(ellipse at center, #111827 0%, #0a0f1e 100%)' }}>
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M10 8l6 4-6 4V8z" /></svg>
+                    <span style={{ color: '#334155', fontSize: '14px', fontFamily: FONT }}>لا يوجد فيديو لهذه المحاضرة</span>
+                </div>
+            )}
+        </div>
+    );
 };
 
-// Initial state until data is loaded
-const defaultSubject: Subject = {
-    id: 'loading',
-    name: 'جاري التحميل...',
-    instructor: '',
-    instructorAvatar: '⏳',
-    avatarBg: '#ccc',
-    lectureCount: '0',
-    icon: '⏳',
-    lectures: []
-};
+const CenteredMsg: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontFamily: FONT }}>{children}</div>
+);
 
+// ── Sidebar lecture item ──────────────────────────────────────────────────────
+const LectureItem: React.FC<{ lec: Lecture; active: boolean; onClick: () => void }> = ({ lec, active, onClick }) => (
+    <button
+        onClick={onClick}
+        style={{ width: '100%', background: active ? 'rgba(56,189,248,0.08)' : 'transparent', border: active ? '1px solid rgba(56,189,248,0.2)' : '1px solid transparent', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: '2px', fontFamily: FONT, transition: 'background 0.15s' }}
+        onMouseOver={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+        onMouseOut={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+    >
+        {active ? (
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(56,189,248,0.15)', border: '2px solid #38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38bdf8', display: 'block' }} />
+            </span>
+        ) : lec.completed ? (
+            <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </span>
+        ) : (
+            <span style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #1e293b', flexShrink: 0, display: 'block' }} />
+        )}
+        <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: active ? '#38bdf8' : '#94a3b8', fontWeight: active ? 600 : 400 }}>{lec.title}</span>
+        {lec.duration && lec.duration !== '10:00' && (
+            <span style={{ fontSize: '11px', color: active ? '#38bdf8' : '#334155', flexShrink: 0 }}>{lec.duration}</span>
+        )}
+    </button>
+);
 
+// ── Main component ────────────────────────────────────────────────────────────
 const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, courseId }) => {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({});
     const [currentLecture, setCurrentLecture] = useState<Lecture | null>(null);
     const [currentSubject, setCurrentSubject] = useState<Subject | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [volume, setVolume] = useState(80);
-    const [playbackSpeed, setPlaybackSpeed] = useState(1);
-    const [showSpeedMenu, setShowSpeedMenu] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [notes, setNotes] = useState('');
     const [showNotes, setShowNotes] = useState(false);
-    const progressInterval = useRef<NodeJS.Timeout | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const { user } = useAuth();
+    const isRecording = useScreenProtection();
+    const watermarkLabel = user?.name || user?.email || 'elmanassa.com';
+    const sessionId = useRef(`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`).current;
 
     useEffect(() => {
-        const loadCourseData = async () => {
-            if (!courseId) {
-                setIsLoading(false);
-                return;
-            }
-
-            const token = localStorage.getItem(TOKEN_KEY);
-
+        const load = async () => {
+            if (!courseId) { setIsLoading(false); return; }
             setIsLoading(true);
             try {
-                // Enrollment check for students
                 if (user?.role === 'student') {
-                    if (!token) {
-                        onNavigate('course-detail', { courseId: typeof courseId === 'number' ? courseId : undefined });
-                        return;
-                    }
-
-                    const enrollments = await fetchStudentEnrollments(token);
-                    const idToMatch = String(courseId);
-
-                    const isEnrolled = enrollments.some((e: any) =>
-                        (String(e.courseId) === idToMatch) ||
-                        (String(e.subjectId) === idToMatch) ||
-                        (String(e.id) === idToMatch)
-                    );
-
-                    if (!isEnrolled) {
+                    const session = await validateSession(String(courseId)).catch(() => null);
+                    if (!session?.enrolled) {
                         onNavigate('course-detail', { courseId: typeof courseId === 'number' ? courseId : undefined });
                         return;
                     }
                 }
-
-                // Call the appropriate API based on ID type
-                let data;
+                let courseData: any = null;
                 if (typeof courseId === 'string' && courseId.includes('-')) {
-                    // It's a Subject (Guid)
-                    data = await fetchSubjectById(courseId as string, token || '');
+                    const result = await fetchSubjectById(courseId);
+                    courseData = result.data;
                 } else {
-                    // It's a Course (number)
-                    data = await fetchCourseById(Number(courseId));
+                    const result = await fetchCourseById(Number(courseId));
+                    courseData = result.data;
                 }
-                if (data && data.curriculum) {
-                    // Map API curriculum to subjects structure
-                    const mappedSubjects: Subject[] = data.curriculum.map((section: any, idx: number) => ({
+                if (courseData?.curriculum) {
+                    const mapped: Subject[] = courseData.curriculum.map((section: any, idx: number) => ({
                         id: `section-${idx}`,
                         name: section.section || section.title,
-                        instructor: data.instructor || 'المعلم',
-                        instructorAvatar: '👨‍🏫',
-                        avatarBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        instructor: courseData.instructorName || 'المعلم',
+                        avatarBg: 'linear-gradient(135deg,#667eea,#764ba2)',
                         lectureCount: `${section.lectures?.length || 0} محاضرات`,
-                        icon: '📚',
                         lectures: (section.lectures || []).map((lec: any, lIdx: number) => ({
                             id: String(lec.id ?? `lec-${idx}-${lIdx}`),
                             title: typeof lec === 'string' ? lec : lec.title,
                             duration: lec.duration || '10:00',
                             videoUrl: lec.videoUrl || '',
-                            completed: false
-                        }))
+                            completed: false,
+                        })),
                     }));
-                    setSubjects(mappedSubjects);
-
-                    if (mappedSubjects.length > 0 && mappedSubjects[0].lectures.length > 0) {
-                        setCurrentSubject(mappedSubjects[0]);
-                        setCurrentLecture(mappedSubjects[0].lectures[0]);
+                    setSubjects(mapped);
+                    if (mapped.length > 0 && mapped[0].lectures.length > 0) {
+                        setCurrentSubject(mapped[0]);
+                        setCurrentLecture(mapped[0].lectures[0]);
                     }
                 }
-            } catch (error) {
-                console.error('Error fetching course curriculum', error);
-            } finally {
-                setIsLoading(false);
-            }
+            } catch (err) { console.error('Error loading course', err); }
+            finally { setIsLoading(false); }
         };
-
-        loadCourseData();
+        load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [courseId]);
 
     useEffect(() => {
@@ -177,668 +170,119 @@ const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, cour
             const subject = subjects[lectureData.subjectIndex];
             if (subject) {
                 const lecture = subject.lectures[lectureData.lectureIndex];
-                if (lecture) {
-                    setCurrentLecture(lecture);
-                    setCurrentSubject(subject);
-                    setExpandedSubjects({ [subject.id]: true });
-                }
+                if (lecture) { setCurrentLecture(lecture); setCurrentSubject(subject); }
             }
         }
     }, [lectureData, subjects]);
 
-    // Simulate video progress
-    useEffect(() => {
-        if (isPlaying) {
-            progressInterval.current = setInterval(() => {
-                setProgress(prev => {
-                    if (prev >= 100) {
-                        setIsPlaying(false);
-                        return 100;
-                    }
-                    return prev + 0.1;
-                });
-            }, 100);
-        } else {
-            if (progressInterval.current) clearInterval(progressInterval.current);
-        }
-        return () => { if (progressInterval.current) clearInterval(progressInterval.current); };
-    }, [isPlaying]);
+    const selectLecture = (lecture: Lecture, subject: Subject) => { setCurrentLecture(lecture); setCurrentSubject(subject); };
 
-    const toggleSubject = (id: string) => {
-        setExpandedSubjects(prev => ({ ...prev, [id]: !prev[id] }));
-    };
-
-    const selectLecture = (lecture: Lecture, subject: Subject) => {
-        setCurrentLecture(lecture);
-        setCurrentSubject(subject);
-        setProgress(0);
-        setIsPlaying(false);
-    };
-
-    // Find next/previous lecture — ONLY within the current subject
-    const findAdjacentLecture = (direction: 'next' | 'prev') => {
+    const findAdjacent = (dir: 'next' | 'prev') => {
         if (!currentSubject || !currentLecture) return null;
-        const subject = currentSubject;
-        for (let lci = 0; lci < subject.lectures.length; lci++) {
-            if (subject.lectures[lci].id === currentLecture.id) {
-                if (direction === 'next') {
-                    if (lci + 1 < subject.lectures.length) {
-                        return { lecture: subject.lectures[lci + 1], subject };
-                    }
-                } else {
-                    if (lci - 1 >= 0) {
-                        return { lecture: subject.lectures[lci - 1], subject };
-                    }
-                }
-            }
-        }
-        return null;
+        const idx = currentSubject.lectures.findIndex(l => l.id === currentLecture.id);
+        if (idx === -1) return null;
+        const next = dir === 'next' ? idx + 1 : idx - 1;
+        if (next < 0 || next >= currentSubject.lectures.length) return null;
+        return { lecture: currentSubject.lectures[next], subject: currentSubject };
     };
 
-    if (isLoading) {
-        return (
-            <div dir="rtl" style={{
-                display: 'flex', minHeight: '100vh', background: '#0a1628',
-                fontFamily: "'Cairo', sans-serif", alignItems: 'center', justifyContent: 'center',
-            }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'spin 1s linear infinite' }}>⏳</div>
-                    <div style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 700 }}>جاري تحميل المحاضرة...</div>
-                </div>
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            </div>
-        );
-    }
+    if (isLoading) return <LoadingScreen />;
+    if (!currentLecture || !currentSubject) return <EmptyScreen hasSubjects={subjects.length > 0} onBack={() => onNavigate('dashboard')} />;
 
-    if (!currentLecture || !currentSubject) {
-        return <div className="p-10 text-white">لم يتم العثور على المحاضرة</div>;
-    }
+    const prevLec = findAdjacent('prev');
+    const nextLec = findAdjacent('next');
+
+    const ghostBtn: React.CSSProperties = { background: 'none', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '7px 14px', color: '#64748b', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT, transition: 'all 0.15s' };
 
     return (
-        <div className="video-viewer-page" dir="rtl" style={{
-            minHeight: '100vh',
-            background: '#0a1628',
-            color: '#e2e8f0',
-            fontFamily: "'Cairo', sans-serif",
-        }}>
-            {/* Top Bar */}
-            <div style={{
-                background: 'linear-gradient(90deg, #0d1f3c 0%, #132742 100%)',
-                borderBottom: '1px solid rgba(56, 189, 248, 0.1)',
-                padding: '12px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button
-                        onClick={() => onNavigate('dashboard')}
-                        style={{
-                            background: 'rgba(56, 189, 248, 0.1)',
-                            border: '1px solid rgba(56, 189, 248, 0.2)',
-                            borderRadius: '10px',
-                            padding: '8px 16px',
-                            color: '#38bdf8',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            transition: 'all 0.3s',
-                            fontFamily: "'Cairo', sans-serif",
-                        }}
-                        onMouseOver={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'; }}
-                        onMouseOut={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'; }}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        العودة للوحة التحكم
+        <div dir="rtl" style={{ minHeight: '100vh', background: '#0a0f1e', color: '#e2e8f0', fontFamily: FONT, display: 'flex', flexDirection: 'column' }} onContextMenu={e => e.preventDefault()}>
+
+            {/* ── Top bar ── */}
+            <header style={{ background: '#0d1424', borderBottom: '1px solid rgba(56,189,248,0.08)', padding: '0 20px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+                    <button onClick={() => onNavigate('dashboard')} style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '8px', padding: '6px 14px', color: '#38bdf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, fontFamily: FONT, flexShrink: 0, transition: 'background 0.15s' }}
+                        onMouseOver={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.15)')}
+                        onMouseOut={e => (e.currentTarget.style.background = 'rgba(56,189,248,0.08)')}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        لوحة التحكم
                     </button>
-                    <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                    <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                    <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.07)', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {currentSubject.name} — {currentLecture.title}
-                    </h2>
+                    </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <button
-                        onClick={() => setShowNotes(!showNotes)}
-                        style={{
-                            background: showNotes ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            padding: '8px 12px',
-                            color: '#94a3b8',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontFamily: "'Cairo', sans-serif",
-                        }}
-                    >
-                        📝 ملاحظاتي
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <button onClick={() => setShowNotes(!showNotes)} style={{ ...ghostBtn, color: showNotes ? '#38bdf8' : '#64748b', borderColor: showNotes ? 'rgba(56,189,248,0.3)' : 'rgba(255,255,255,0.08)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                        ملاحظاتي
                     </button>
-                    <button
-                        onClick={() => setSidebarOpen(!sidebarOpen)}
-                        style={{
-                            background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            padding: '8px 12px',
-                            color: '#94a3b8',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontFamily: "'Cairo', sans-serif",
-                        }}
-                    >
-                        📋 المحتوى
+                    <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ ...ghostBtn, color: sidebarOpen ? '#e2e8f0' : '#64748b' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /></svg>
+                        المحتوى
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <div style={{ display: 'flex', height: 'calc(100vh - 57px)' }}>
-                {/* Main Video Area */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    {/* Video Player */}
-                    <div style={{
-                        flex: 1,
-                        background: '#000',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '400px',
-                    }}>
-                        {/* Video Player */}
-                        <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                        }}>
-                            {currentLecture.videoUrl ? (
-                                <iframe
-                                    src={getGoogleDriveEmbedUrl(currentLecture.videoUrl)}
-                                    style={{ width: '100%', height: '100%', border: 'none' }}
-                                    allowFullScreen
-                                    title={currentLecture.title}
-                                />
-                            ) : (
-                                <div style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    background: 'radial-gradient(ellipse at center, #1a2a4a 0%, #0a1628 100%)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '20px',
-                                }}>
-                                    {!isPlaying && (
-                                        <div style={{
-                                            width: '80px',
-                                            height: '80px',
-                                            borderRadius: '50%',
-                                            background: 'rgba(56, 189, 248, 0.15)',
-                                            border: '2px solid rgba(56, 189, 248, 0.3)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s',
-                                            backdropFilter: 'blur(10px)',
-                                        }}
-                                            onClick={() => setIsPlaying(true)}
-                                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.3)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                            onMouseOut={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                        >
-                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="#38bdf8">
-                                                <path d="M8 5v14l11-7z" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                    {isPlaying && (
-                                        <div style={{ textAlign: 'center' }}>
-                                            <div style={{
-                                                width: '120px',
-                                                height: '120px',
-                                                borderRadius: '50%',
-                                                border: '3px solid rgba(56, 189, 248, 0.3)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                animation: 'pulse 2s ease-in-out infinite',
-                                                margin: '0 auto 16px',
-                                            }}>
-                                                <span style={{ fontSize: '48px' }}>🎬</span>
-                                            </div>
-                                            <p style={{ color: '#94a3b8', fontSize: '14px' }}>جاري تشغيل المحاضرة...</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+            {/* ── Body ── */}
+            <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 52px)', overflow: 'hidden' }}>
 
-                        {/* Controls Overlay */}
-                        <div style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                            padding: '40px 20px 16px',
-                        }}>
-                            {/* Progress Bar */}
-                            <div
-                                style={{
-                                    width: '100%',
-                                    height: '4px',
-                                    background: 'rgba(255,255,255,0.15)',
-                                    borderRadius: '2px',
-                                    cursor: 'pointer',
-                                    marginBottom: '12px',
-                                    position: 'relative',
-                                }}
-                                onClick={(e) => {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    const newProg = ((e.clientX - rect.left) / rect.width) * 100;
-                                    setProgress(newProg);
-                                }}
-                            >
-                                <div style={{
-                                    width: `${progress}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, #38bdf8, #06b6d4)',
-                                    borderRadius: '2px',
-                                    transition: 'width 0.1s linear',
-                                    position: 'relative',
-                                }}>
-                                    <div style={{
-                                        position: 'absolute',
-                                        left: '-6px',
-                                        top: '-4px',
-                                        width: '12px',
-                                        height: '12px',
-                                        borderRadius: '50%',
-                                        background: '#38bdf8',
-                                        boxShadow: '0 0 8px rgba(56, 189, 248, 0.5)',
-                                    }} />
-                                </div>
-                            </div>
+                {/* ── Video column ── */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                    <VideoArea lecture={currentLecture} watermarkLabel={watermarkLabel} sessionId={sessionId} isRecording={isRecording} />
 
-                            {/* Controls row */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    {/* Prev */}
-                                    <button
-                                        onClick={() => { const prev = findAdjacentLecture('prev'); if (prev) selectLecture(prev.lecture, prev.subject); }}
-                                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
-                                    >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
-                                    </button>
-                                    {/* Play/Pause */}
-                                    <button
-                                        onClick={() => setIsPlaying(!isPlaying)}
-                                        style={{
-                                            background: 'rgba(56, 189, 248, 0.15)',
-                                            border: '1px solid rgba(56, 189, 248, 0.3)',
-                                            borderRadius: '50%',
-                                            width: '40px',
-                                            height: '40px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: '#38bdf8',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        {isPlaying ? (
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
-                                        ) : (
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-                                        )}
-                                    </button>
-                                    {/* Next */}
-                                    <button
-                                        onClick={() => { const next = findAdjacentLecture('next'); if (next) selectLecture(next.lecture, next.subject); }}
-                                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
-                                    >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
-                                    </button>
-                                    {/* Volume */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#94a3b8"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            value={volume}
-                                            onChange={(e) => setVolume(Number(e.target.value))}
-                                            style={{ width: '70px', accentColor: '#38bdf8' }}
-                                        />
-                                    </div>
-                                    {/* Time */}
-                                    <span style={{ color: '#94a3b8', fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>
-                                        {currentLecture.duration} / {Math.floor(progress * 0.01 * parseInt(currentLecture.duration)).toString().padStart(2, '0')}:{Math.floor((progress * 0.6) % 60).toString().padStart(2, '0')}
-                                    </span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    {/* Speed */}
-                                    <div style={{ position: 'relative' }}>
-                                        <button
-                                            onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                                            style={{
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '6px',
-                                                padding: '4px 10px',
-                                                color: '#94a3b8',
-                                                cursor: 'pointer',
-                                                fontSize: '12px',
-                                                fontFamily: "'Cairo', sans-serif",
-                                            }}
-                                        >
-                                            {playbackSpeed}x
-                                        </button>
-                                        {showSpeedMenu && (
-                                            <div style={{
-                                                position: 'absolute',
-                                                bottom: '40px',
-                                                left: '50%',
-                                                transform: 'translateX(-50%)',
-                                                background: '#1e293b',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '8px',
-                                                padding: '4px',
-                                                zIndex: 10,
-                                            }}>
-                                                {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
-                                                    <button
-                                                        key={speed}
-                                                        onClick={() => { setPlaybackSpeed(speed); setShowSpeedMenu(false); }}
-                                                        style={{
-                                                            display: 'block',
-                                                            width: '100%',
-                                                            padding: '6px 16px',
-                                                            background: playbackSpeed === speed ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                                                            border: 'none',
-                                                            color: playbackSpeed === speed ? '#38bdf8' : '#94a3b8',
-                                                            cursor: 'pointer',
-                                                            fontSize: '13px',
-                                                            borderRadius: '4px',
-                                                            fontFamily: "'Cairo', sans-serif",
-                                                        }}
-                                                    >
-                                                        {speed}x
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Fullscreen */}
-                                    <button
-                                        onClick={() => setIsFullscreen(!isFullscreen)}
-                                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
-                                    >
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Below video info */}
-                    <div style={{
-                        padding: '20px 24px',
-                        background: '#0d1f3c',
-                        borderTop: '1px solid rgba(255,255,255,0.05)',
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px' }}>
-                            <div>
-                                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#e2e8f0', margin: '0 0 6px 0' }}>
-                                    {currentLecture.title}
-                                </h3>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '13px', color: '#64748b' }}>
+                    {/* ── Info bar ── */}
+                    <div style={{ background: '#0d1424', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '14px 20px', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: 0 }}>
+                                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f1f5f9', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentLecture.title}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#475569' }}>
                                     <span>{currentSubject.name}</span>
-                                    <span>•</span>
+                                    <span>·</span>
                                     <span>{currentSubject.instructor}</span>
-                                    <span>•</span>
-                                    <span>⏱️ {currentLecture.duration}</span>
+                                    {currentLecture.duration && currentLecture.duration !== '10:00' && (
+                                        <><span>·</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" strokeLinecap="round" /></svg>
+                                        <span>{currentLecture.duration}</span></>
+                                    )}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button
-                                    onClick={() => {
-                                        const prev = findAdjacentLecture('prev');
-                                        if (prev) selectLecture(prev.lecture, prev.subject);
-                                    }}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '10px',
-                                        padding: '10px 20px',
-                                        color: '#94a3b8',
-                                        cursor: 'pointer',
-                                        fontSize: '13px',
-                                        fontWeight: 600,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        fontFamily: "'Cairo', sans-serif",
-                                    }}
-                                >
-                                    المحاضرة السابقة
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
+                            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                <button onClick={() => prevLec && selectLecture(prevLec.lecture, prevLec.subject)} disabled={!prevLec}
+                                    style={{ ...ghostBtn, opacity: prevLec ? 1 : 0.3, cursor: prevLec ? 'pointer' : 'default' }}>
+                                    السابقة
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 </button>
-                                <button
-                                    onClick={() => {
-                                        const next = findAdjacentLecture('next');
-                                        if (next) selectLecture(next.lecture, next.subject);
-                                    }}
-                                    style={{
-                                        background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)',
-                                        border: 'none',
-                                        borderRadius: '10px',
-                                        padding: '10px 20px',
-                                        color: '#fff',
-                                        cursor: 'pointer',
-                                        fontSize: '13px',
-                                        fontWeight: 600,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        fontFamily: "'Cairo', sans-serif",
-                                    }}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    المحاضرة التالية
+                                <button onClick={() => nextLec && selectLecture(nextLec.lecture, nextLec.subject)} disabled={!nextLec}
+                                    style={{ background: nextLec ? 'linear-gradient(135deg,#0ea5e9,#2563eb)' : 'rgba(255,255,255,0.04)', border: 'none', borderRadius: '8px', padding: '7px 16px', color: nextLec ? '#fff' : '#334155', cursor: nextLec ? 'pointer' : 'default', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT, opacity: nextLec ? 1 : 0.3, transition: 'opacity 0.15s' }}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    التالية
                                 </button>
                             </div>
                         </div>
 
-                        {/* Notes section */}
                         {showNotes && (
-                            <div style={{
-                                marginTop: '16px',
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '12px',
-                                padding: '16px',
-                            }}>
-                                <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', margin: '0 0 10px 0' }}>📝 ملاحظاتي على هذه المحاضرة</h4>
-                                <textarea
-                                    value={notes}
-                                    onChange={e => setNotes(e.target.value)}
-                                    placeholder="اكتب ملاحظاتك هنا..."
-                                    style={{
-                                        width: '100%',
-                                        minHeight: '80px',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '8px',
-                                        padding: '12px',
-                                        color: '#e2e8f0',
-                                        fontSize: '14px',
-                                        fontFamily: "'Cairo', sans-serif",
-                                        resize: 'vertical',
-                                        outline: 'none',
-                                    }}
-                                />
+                            <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '12px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>ملاحظاتي</div>
+                                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="اكتب ملاحظاتك هنا..."
+                                    style={{ width: '100%', minHeight: '72px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px', color: '#e2e8f0', fontSize: '13px', fontFamily: FONT, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Sidebar - Current Subject Content Only */}
+                {/* ── Sidebar ── */}
                 {sidebarOpen && (
-                    <div style={{
-                        width: '360px',
-                        background: '#0d1f3c',
-                        borderRight: '1px solid rgba(255,255,255,0.06)',
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}>
-                        {/* Subject Header (fixed, not a list) */}
-                        <div style={{
-                            padding: '16px 20px',
-                            borderBottom: '1px solid rgba(255,255,255,0.06)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                        }}>
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: currentSubject.avatarBg,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '18px',
-                            }}>
-                                {currentSubject.icon}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e8f0', margin: 0 }}>{currentSubject.name}</h3>
-                                <div style={{ fontSize: '11px', color: '#64748b' }}>{currentSubject.instructor} • {currentSubject.lectureCount}</div>
-                            </div>
+                    <aside style={{ width: '300px', background: '#0d1424', borderRight: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#e2e8f0' }}>{currentSubject.name}</div>
+                            <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>{currentSubject.instructor} · {currentSubject.lectureCount}</div>
                         </div>
-
-                        {/* Lectures list */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}>
-                            <div style={{ animation: 'fadeIn 0.2s ease' }}>
-                                {currentSubject.lectures.map((lecture) => {
-                                    const isActive = currentLecture.id === lecture.id;
-                                    return (
-                                        <button
-                                            key={lecture.id}
-                                            onClick={() => selectLecture(lecture, currentSubject)}
-                                            style={{
-                                                width: '100%',
-                                                background: isActive ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
-                                                border: isActive ? '1px solid rgba(56, 189, 248, 0.2)' : '1px solid transparent',
-                                                borderRadius: '8px',
-                                                padding: '12px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s',
-                                                marginBottom: '4px',
-                                                fontFamily: "'Cairo', sans-serif",
-                                            }}
-                                            onMouseOver={e => {
-                                                if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                            }}
-                                            onMouseOut={e => {
-                                                if (!isActive) e.currentTarget.style.background = 'transparent';
-                                            }}
-                                        >
-                                            {/* Status indicator */}
-                                            {lecture.completed ? (
-                                                <div style={{
-                                                    width: '24px', height: '24px', borderRadius: '50%',
-                                                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    flexShrink: 0,
-                                                }}>
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                                                        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                                                    </svg>
-                                                </div>
-                                            ) : isActive ? (
-                                                <div style={{
-                                                    width: '24px', height: '24px', borderRadius: '50%',
-                                                    background: 'rgba(56, 189, 248, 0.2)',
-                                                    border: '2px solid #38bdf8',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    flexShrink: 0,
-                                                    boxShadow: '0 0 8px rgba(56, 189, 248, 0.3)',
-                                                }}>
-                                                    <div style={{
-                                                        width: '8px', height: '8px', borderRadius: '50%',
-                                                        background: '#38bdf8',
-                                                        animation: 'pulse 1.5s ease-in-out infinite',
-                                                    }} />
-                                                </div>
-                                            ) : (
-                                                <div style={{
-                                                    width: '24px', height: '24px', borderRadius: '50%',
-                                                    border: '2px solid #334155',
-                                                    flexShrink: 0,
-                                                }} />
-                                            )}
-
-                                            {/* Lecture title */}
-                                            <div style={{ flex: 1, textAlign: 'right' }}>
-                                                <div style={{
-                                                    fontSize: '14px',
-                                                    color: isActive ? '#38bdf8' : lecture.completed ? '#64748b' : '#cbd5e1',
-                                                    fontWeight: isActive ? 700 : 500,
-                                                    textDecoration: lecture.completed ? 'line-through' : 'none',
-                                                }}>
-                                                    {lecture.title}
-                                                </div>
-                                            </div>
-
-                                            {/* Duration */}
-                                            <span style={{ fontSize: '12px', color: isActive ? '#38bdf8' : '#475569', flexShrink: 0, fontWeight: 500 }}>{lecture.duration}</span>
-
-                                            {/* Play icon */}
-                                            {isActive ? (
-                                                <div style={{
-                                                    width: '24px', height: '24px',
-                                                    borderRadius: '6px',
-                                                    background: 'rgba(56, 189, 248, 0.2)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    flexShrink: 0,
-                                                }}>
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#38bdf8"><path d="M8 5v14l11-7z" /></svg>
-                                                </div>
-                                            ) : (
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#475569" style={{ flexShrink: 0 }}>
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+                            {currentSubject.lectures.map(lec => (
+                                <LectureItem key={lec.id} lec={lec} active={lec.id === currentLecture.id} onClick={() => selectLecture(lec, currentSubject)} />
+                            ))}
                         </div>
-                    </div>
+                    </aside>
                 )}
             </div>
         </div>

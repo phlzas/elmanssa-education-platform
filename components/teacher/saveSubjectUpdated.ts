@@ -40,7 +40,7 @@ export const createSaveSubjectFunction = (
         try {
             if (editingSubject) {
                 // Update existing course
-                await updateTeacherSubject(token, parseInt(editingSubject.id), {
+                await updateTeacherSubject(token, editingSubject.id, {
                     title: newSubjectName,
                     description: newSubjectDesc,
                 });

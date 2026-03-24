@@ -12,6 +12,8 @@ export function signup(data: {
     email: string;
     password: string;
     role: string;
+    phoneNumber: string;
+    nationalId: string;
 }) {
     return apiRequest("/auth/signup", {
         method: "POST",
@@ -38,4 +40,22 @@ export function signupTeacher(data: {
 
 export function checkEmail(email: string) {
     return apiRequest(`/auth/check-email?email=${encodeURIComponent(email)}`);
+}
+
+export function refreshToken(token: string) {
+    return apiRequest("/auth/refresh", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken: token }),
+    });
+}
+
+export function logoutApi(token: string) {
+    return apiRequest("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken: token }),
+    });
+}
+
+export function validateSession(courseId: string) {
+    return apiRequest(`/auth/session/validate?courseId=${encodeURIComponent(courseId)}`);
 }

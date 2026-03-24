@@ -61,6 +61,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
       setError('كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، وتشمل حرفاً كبيراً وحرفاً صغيراً ورقماً');
       return;
     }
+    if (accountType === 'student' && (!phoneNumber || !nationalId)) {
+      setError('يرجى إدخال رقم الهاتف والرقم القومي');
+      return;
+    }
     setError('');
     setIsLoading(true);
     try {
@@ -94,11 +98,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
           avatarUrl
         });
       } else {
-        await signup(fullName, email, password, accountType, {
-          phoneNumber: phoneNumber || undefined,
-          nationalId: nationalId || undefined,
-          avatarUrl: avatarUrl || undefined
-        });
+        await signup(fullName, email, password, accountType, phoneNumber, nationalId);
       }
       // App.tsx auto-redirects via useEffect on auth state change
     } catch (err: any) {
@@ -284,10 +284,13 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
               )}
             </div>
 
-            {/* Optional Fields for All Users */}
+            {/* Required Fields for Students */}
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-[#034289] mb-2">الرقم القومي (اختياري)</label>
+                <label className="block text-sm font-bold text-[#034289] mb-2">
+                  الرقم القومي {accountType === 'student' && <span className="text-red-500">*</span>}
+                  {accountType === 'teacher' && <span className="text-[#034289]/50 font-normal">(اختياري)</span>}
+                </label>
                 <input
                   type="text"
                   value={nationalId}
@@ -297,7 +300,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-[#034289] mb-2">رقم الهاتف (اختياري)</label>
+                <label className="block text-sm font-bold text-[#034289] mb-2">
+                  رقم الهاتف {accountType === 'student' && <span className="text-red-500">*</span>}
+                  {accountType === 'teacher' && <span className="text-[#034289]/50 font-normal">(اختياري)</span>}
+                </label>
                 <input
                   type="text"
                   value={phoneNumber}

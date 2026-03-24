@@ -69,6 +69,7 @@ const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
 const PaymentSuccessPage = React.lazy(() => import('./components/PaymentSuccessPage'));
 const VideoViewer = React.lazy(() => import('./components/VideoViewer'));
 const TeacherDashboard = React.lazy(() => import('./components/TeacherDashboard'));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 
 export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard';
 export type AccountType = 'student' | 'teacher' | 'admin';
@@ -108,6 +109,36 @@ const App: React.FC = () => {
     }
     prevLoggedIn.current = isLoggedIn;
   }, [isLoggedIn, user]);
+
+  // Auth + role-based access guard
+  useEffect(() => {
+    const protectedPages: Page[] = ['dashboard', 'teacher-dashboard', 'admin-dashboard', 'video-viewer', 'checkout', 'payment-success'];
+
+    // Unauthenticated — redirect to login
+    if (!isLoggedIn || !user) {
+      if (protectedPages.includes(currentPage)) {
+        window.history.replaceState({ page: 'login' }, '', PAGE_TO_PATH['login']);
+        setCurrentPage('login');
+      }
+      return;
+    }
+
+    // Authenticated — enforce role boundaries
+    const role = user.role;
+    if (currentPage === 'dashboard' && role !== 'student') {
+      const target: Page = role === 'admin' ? 'admin-dashboard' : 'teacher-dashboard';
+      window.history.replaceState({ page: target }, '', PAGE_TO_PATH[target]);
+      setCurrentPage(target);
+    } else if (currentPage === 'teacher-dashboard' && role !== 'teacher') {
+      const target: Page = role === 'admin' ? 'admin-dashboard' : 'dashboard';
+      window.history.replaceState({ page: target }, '', PAGE_TO_PATH[target]);
+      setCurrentPage(target);
+    } else if (currentPage === 'admin-dashboard' && role !== 'admin') {
+      const target: Page = role === 'teacher' ? 'teacher-dashboard' : 'dashboard';
+      window.history.replaceState({ page: target }, '', PAGE_TO_PATH[target]);
+      setCurrentPage(target);
+    }
+  }, [currentPage, isLoggedIn, user]);
 
   const navigateTo = useCallback((page: Page, payload?: { accountType?: AccountType; courseId?: number | string; tab?: string }) => {
     if (page === 'signup' && payload?.accountType) {
@@ -174,7 +205,7 @@ const App: React.FC = () => {
       case 'teacher-dashboard':
         return <TeacherDashboard onNavigate={navigateTo} initialTab={initialDashboardTab} />;
       case 'admin-dashboard':
-        return <div className="p-20 text-center text-xl font-bold">لوحة تحكم المشرف قيد التطوير</div>;
+        return <AdminDashboard onNavigate={navigateTo} />;
       case 'checkout':
         return selectedCourseId ? (
           <CheckoutPage courseId={selectedCourseId} onNavigate={navigateTo} />
@@ -198,10 +229,10 @@ const App: React.FC = () => {
     <>
       <ToastContainer />
       <div className="bg-[#FEFEFE] min-h-screen flex flex-col text-[#034289] overflow-x-hidden">
-        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && (
+        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && (
           <Header onNavigate={navigateTo} currentPage={currentPage} />
         )}
-        <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' ? 'pt-[82px]' : ''}`}>
+        <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' ? 'pt-[82px]' : ''}`}>
           <Suspense fallback={
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="w-10 h-10 border-4 border-[#034289]/20 border-t-[#034289] rounded-full animate-spin" />
@@ -210,7 +241,7 @@ const App: React.FC = () => {
             {renderPage()}
           </Suspense>
         </main>
-        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && (
+        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && (
           <Footer onNavigate={navigateTo} />
         )}
       </div>

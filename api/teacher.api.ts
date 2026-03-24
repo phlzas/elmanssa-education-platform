@@ -20,7 +20,19 @@ export function createSubject(data: {
     });
 }
 
-export function updateSubject(id: string, data: { name?: string; description?: string; icon?: string }) {
+export function updateSubject(id: string, data: { 
+    name?: string; 
+    title?: string;
+    description?: string; 
+    category?: string;
+    duration?: number;
+    level?: string;
+    language?: string;
+    price?: number;
+    imageUrl?: string;
+    icon?: string;
+    status?: string;
+}) {
     return apiRequest(`/teacher/subjects/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
