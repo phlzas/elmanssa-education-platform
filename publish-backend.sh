@@ -11,10 +11,20 @@ echo "[1/5] Stopping old service..."
 ssh root@76.13.36.5 "pkill -9 dotnet || true"
 sleep 2
 
-# Upload source files
+# Upload source files only (exclude bin, obj, publish)
 echo "[2/5] Uploading source files..."
 ssh root@76.13.36.5 "rm -rf /tmp/elmanassa_deploy && mkdir -p /tmp/elmanassa_deploy"
-scp -r elmanassa_backend/elmanassa/* root@76.13.36.5:/tmp/elmanassa_deploy/
+
+# Copy source files only
+scp -r elmanassa_backend/elmanassa/ApplicationDbContext root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/Controllers root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/DTOs root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/Models root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/Repositories root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/Services root@76.13.36.5:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend/elmanassa/Properties root@76.13.36.5:/tmp/elmanassa_deploy/
+scp elmanassa_backend/elmanassa/*.cs root@76.13.36.5:/tmp/elmanassa_deploy/
+scp elmanassa_backend/elmanassa/*.csproj root@76.13.36.5:/tmp/elmanassa_deploy/
 
 # Build on server
 echo "[3/5] Building..."

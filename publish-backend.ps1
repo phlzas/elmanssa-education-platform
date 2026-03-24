@@ -13,10 +13,24 @@ Write-Host "[1/5] Stopping old service..."
 ssh ${USER}@${SERVER} "pkill -9 dotnet || true"
 Start-Sleep -Seconds 2
 
-# Upload source files
+# Upload source files only (exclude bin, obj, publish)
 Write-Host "[2/5] Uploading source files..."
 ssh ${USER}@${SERVER} "rm -rf /tmp/elmanassa_deploy && mkdir -p /tmp/elmanassa_deploy"
-scp -r elmanassa_backend\elmanassa\* ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+
+# Copy source folders
+scp -r elmanassa_backend\elmanassa\ApplicationDbContext ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\Controllers ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\DTOs ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\Models ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\Repositories ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\Services ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp -r elmanassa_backend\elmanassa\Properties ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+
+# Copy root files
+scp elmanassa_backend\elmanassa\*.cs ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+scp elmanassa_backend\elmanassa\*.csproj ${USER}@${SERVER}:/tmp/elmanassa_deploy/
+
+Write-Host "Files uploaded!" -ForegroundColor Green
 
 # Build on server
 Write-Host "[3/5] Building..."
