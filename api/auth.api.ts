@@ -59,3 +59,31 @@ export function logoutApi(token: string) {
 export function validateSession(courseId: string) {
     return apiRequest(`/auth/session/validate?courseId=${encodeURIComponent(courseId)}`);
 }
+
+export function sendVerificationCode(email: string) {
+    return apiRequest("/auth/send-verification", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+    });
+}
+
+export function verifyEmail(email: string, code: string) {
+    return apiRequest("/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+    });
+}
+
+export function forgotPassword(email: string) {
+    return apiRequest("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+    });
+}
+
+export function resetPassword(email: string, code: string, newPassword: string) {
+    return apiRequest("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ email, code, newPassword }),
+    });
+}

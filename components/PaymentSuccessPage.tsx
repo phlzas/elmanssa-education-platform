@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { fetchCourseById } from '../services/api';
-import { Course } from '../types';
+import { fetchCourseById } from '../api/courses.api';
+import { Course } from '../types/types';
 import { Page, AccountType } from '../App';
 import StarIcon from './icons/StarIcon';
 import ClockIcon from './icons/ClockIcon';
@@ -43,7 +43,7 @@ const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNav
     });
 
     return (
-        <div className="bg-[#F8FAFA] min-h-screen relative overflow-hidden">
+        <div dir="rtl" className="bg-[#F8FAFA] min-h-screen relative overflow-hidden font-cairo" style={{ fontFamily: "'Cairo', sans-serif" }}>
             {/* Confetti Effect */}
             {showConfetti && (
                 <div className="fixed inset-0 pointer-events-none z-50">
@@ -235,7 +235,7 @@ const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNav
                     <div className={`mt-8 flex flex-col sm:flex-row gap-4 max-w-md mx-auto transition-all duration-700 ${animStep >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                         <button
                             onClick={() => onNavigate('dashboard')}
-                            className="flex-1 btn-primary py-4 text-white font-bold rounded-xl text-lg shadow-lg flex items-center justify-center gap-2"
+                            className="flex-1 btn-primary py-4 text-white font-bold rounded-xl text-lg shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-colors duration-200"
                         >
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -245,7 +245,7 @@ const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ courseId, onNav
                         </button>
                         <button
                             onClick={() => onNavigate('courses')}
-                            className="flex-1 py-4 border-2 border-[#D2E1D9] text-[#034289] font-bold rounded-xl hover:bg-white hover:shadow-md transition-all flex items-center justify-center gap-2"
+                            className="flex-1 py-4 border-2 border-[#D2E1D9] text-[#034289] font-bold rounded-xl hover:bg-white hover:shadow-md transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />

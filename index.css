@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+
 /* ========================================
    Elmanssa Education Platform - Premium Styles
    ======================================== */
@@ -630,6 +632,44 @@ select:focus {
   }
 }
 
+/* ── Styled select options (dark theme) ── */
+/* Forces dark background on native dropdown list in browsers that support it */
+select.select-dark option,
+select.select-dark optgroup {
+  background-color: #0d1f3c;
+  color: #e2e8f0;
+}
+
+select.select-dark option:checked,
+select.select-dark option:hover {
+  background-color: #034289;
+  color: #ffffff;
+}
+
+/* Light theme options */
+select.select-light option,
+select.select-light optgroup {
+  background-color: #ffffff;
+  color: #034289;
+}
+
+/* Global dark select — any select inside a dark dashboard container */
+[class*="bg-"][class*="0a1628"] select option,
+[class*="bg-"][class*="0f172a"] select option,
+[class*="bg-"][class*="0a1628"] select optgroup,
+[class*="bg-"][class*="0f172a"] select optgroup,
+[dir="rtl"] select.select-dark option,
+[dir="rtl"] select.select-dark optgroup {
+  background-color: #0d1f3c;
+  color: #e2e8f0;
+}
+
+[class*="bg-"][class*="0a1628"] select option:checked,
+[class*="bg-"][class*="0f172a"] select option:checked {
+  background-color: #034289;
+  color: #ffffff;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -638,5 +678,36 @@ select:focus {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+}
+
+/* ── AI Loading Animation ── */
+@keyframes ai-dot-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  50%       { opacity: 1;    transform: scale(1);   }
+}
+
+@keyframes ai-grid-collapse {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.1); }
+}
+
+@keyframes ai-avatar-pop {
+  0%   { opacity: 0; transform: scale(0) rotate(-15deg); }
+  60%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
+  80%  { transform: scale(0.95) rotate(-2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.ai-dot {
+  animation: ai-dot-pulse 1200ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.ai-grid-collapse {
+  animation: ai-grid-collapse 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ai-avatar-pop {
+  animation: ai-avatar-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }

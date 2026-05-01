@@ -1,11 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { validateEmail, sanitizePlainText } from '../utils/validation';
 
 interface LoginPageProps {
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, params?: Record<string, string>) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
@@ -19,24 +19,48 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     if (user && isLoggedIn) {
-      showToast(`مرحباً بك ${user.name}!`, 'success');
-      const target: Page = user.role === 'admin' ? 'admin-dashboard' : (user.role === 'teacher' ? 'teacher-dashboard' : 'dashboard');
+      showToast(`مرحبا بك ${user.name}!`, 'success');
+      const target: Page =
+        user.role === 'admin'
+          ? 'admin-dashboard'
+          : user.role === 'teacher'
+          ? 'teacher-dashboard'
+          : 'dashboard';
       onNavigate(target);
     }
   }, [user, isLoggedIn, onNavigate, showToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+
+    // Validate required fields
+    if (!email.trim() || !password) {
       setError('يرجى ملء جميع الحقول');
       return;
     }
+
+    // Sanitize email
+    const sanitizedEmail = sanitizePlainText(email, 254).toLowerCase();
+
+    // Validate email format
+    if (!validateEmail(sanitizedEmail)) {
+      setError('البريد الإلكتروني غير صالح');
+      return;
+    }
+
     setError('');
     setIsLoading(true);
     try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err?.message || 'حدث خطأ أثناء تسجيل الدخول');
+      const result = await login(sanitizedEmail, password);
+      if (result && result.requiresEmailVerification) {
+        showToast('يرجى تفعيل بريدك الإلكتروني أولاً. تم إرسال رمز التحقق إلى بريدك.', 'warning');
+        onNavigate('verify-email', { email: result.email || sanitizedEmail });
+        return;
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'حدث خطأ أثناء تسجيل الدخول';
+      setError(message);
       setIsLoading(false);
       return;
     }
@@ -44,98 +68,127 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 md:py-20 px-4 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#4F8751]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-[#034289]/10 rounded-full blur-3xl" />
-        <div className="absolute inset-0 dots-pattern opacity-20" />
+    <div
+      dir="rtl"
+      className="min-h-[80vh] flex items-center justify-center py-12 md:py-20 px-4 bg-[#f9f9ff] relative overflow-hidden"
+    >
+      {/* Subtle background blobs */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#034289]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-[#4F8751]/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-md animate-fade-in-up">
+      <div className="relative w-full max-w-md">
         {/* Card */}
-        <div className="card-premium glass bg-white/90 p-8 md:p-10 rounded-3xl border border-[#D2E1D9]/50 shadow-2xl">
+        <div className="bg-white rounded-2xl shadow-[0_8px_24px_-4px_rgba(3,66,137,0.12)] p-8 md:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#4F8751] to-[#6ba96d] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5 shadow-md"
+              style={{ background: 'linear-gradient(135deg, #002c61 0%, #034289 100%)' }}
+              aria-hidden="true"
+            >
+              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <h2 className="text-3xl font-black text-[#034289] mb-2">تسجيل الدخول</h2>
-            <p className="text-[#034289]/60">مرحباً بعودتك! قم بتسجيل الدخول للمتابعة</p>
+            <h1 className="text-2xl font-bold text-[#002c61] mb-1">تسجيل الدخول</h1>
+            <p className="text-sm text-[#434751]">مرحبا بعودتك! قم بتسجيل الدخول للمتابعة</p>
           </div>
 
-          {/* Error Message */}
+          {/* Global error alert */}
           {error && (
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium animate-fade-in flex items-start gap-2">
-              <span className="text-red-400 mt-0.5">⚠️</span>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-5 flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"
+            >
+              <svg className="w-4 h-4 mt-0.5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
               <span>{error}</span>
             </div>
           )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit} noValidate>
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-bold text-[#034289] mb-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-[#002c61] mb-1.5">
                 البريد الإلكتروني
               </label>
               <div className="relative">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737782]" aria-hidden="true">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                </div>
+                </span>
                 <input
                   type="email"
                   id="email"
+                  name="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@email.com"
-                  className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  aria-required="true"
+                  aria-invalid={!!error}
+                  className={`w-full pr-10 pl-4 py-3 bg-[#e8e7ee] rounded-t-xl rounded-b-none border-b-2 text-[#1a1c20] placeholder:text-[#737782] focus:outline-none focus:bg-[#ededf4] transition-colors duration-200 ${
+                    error ? 'border-red-400 focus:border-red-500' : 'border-[#034289] focus:border-[#002c61]'
+                  }`}
                 />
               </div>
+              {error && (
+                <p role="alert" className="mt-1.5 text-red-500 text-sm flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {error}
+                </p>
+              )}
             </div>
 
             {/* Password Field */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-sm font-bold text-[#034289]">
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="block text-sm font-semibold text-[#002c61]">
                   كلمة المرور
                 </label>
                 <button
                   type="button"
-                  onClick={() => onNavigate('support')}
-                  className="text-sm text-[#4F8751] hover:underline font-medium"
+                  onClick={() => onNavigate('forgot-password')}
+                  className="text-xs text-[#034289] hover:text-[#002c61] font-medium cursor-pointer transition-colors duration-200 underline-offset-2 hover:underline"
                 >
-                  نسيت كلمة المرور؟
+                  نسيت كلمة المرور
                 </button>
               </div>
               <div className="relative">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737782]" aria-hidden="true">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
-                </div>
+                </span>
                 <input
                   type="password"
                   id="password"
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
+                  placeholder=""
+                  aria-required="true"
+                  className="w-full pr-10 pl-4 py-3 bg-[#e8e7ee] rounded-t-xl rounded-b-none border-b-2 border-[#034289] text-[#1a1c20] placeholder:text-[#737782] focus:outline-none focus:bg-[#ededf4] focus:border-[#002c61] transition-colors duration-200"
                 />
               </div>
             </div>
 
             {/* Remember Me */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <input
                 type="checkbox"
                 id="remember"
-                className="w-5 h-5 rounded border-2 border-[#D2E1D9] text-[#4F8751] focus:ring-[#4F8751] focus:ring-offset-0"
+                className="w-4 h-4 rounded border-2 border-[#c3c6d2] text-[#034289] focus:ring-[#034289] focus:ring-offset-0 cursor-pointer"
               />
-              <label htmlFor="remember" className="text-[#034289]/70 text-sm">
+              <label htmlFor="remember" className="text-sm text-[#434751] cursor-pointer select-none">
                 تذكرني في هذا الجهاز
               </label>
             </div>
@@ -144,16 +197,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-3.5 rounded-xl text-white font-bold text-base cursor-pointer transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-[#034289] focus-visible:ring-offset-2"
+              style={{ background: isLoading ? '#034289' : 'linear-gradient(135deg, #002c61 0%, #034289 100%)' }}
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center gap-2">
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    جاري تسجيل الدخول...
+                    <span>جاري تسجيل الدخول...</span>
                   </>
                 ) : (
                   'تسجيل الدخول'
@@ -163,26 +217,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           </form>
 
           {/* Divider */}
-          <div className="flex items-center gap-4 my-8">
-            <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#D2E1D9]" />
-            <span className="text-[#034289]/50 text-sm">أو</span>
-            <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[#D2E1D9]" />
+          <div className="flex items-center gap-3 my-7" aria-hidden="true">
+            <div className="flex-1 h-px bg-[#c3c6d2]" />
+            <span className="text-xs text-[#737782]">أو</span>
+            <div className="flex-1 h-px bg-[#c3c6d2]" />
           </div>
-
-          
 
           {/* Sign Up Link */}
-          <div className="text-center mt-8">
-            <p className="text-[#034289]/70">
-              ليس لديك حساب؟{' '}
-              <button
-                onClick={() => onNavigate('signup')}
-                className="font-bold text-[#4F8751] hover:underline"
-              >
-                إنشاء حساب جديد
-              </button>
-            </p>
-          </div>
+          <p className="text-center text-sm text-[#434751]">
+            ليس لديك حساب{' '}
+            <button
+              type="button"
+              onClick={() => onNavigate('signup')}
+              className="font-bold text-[#034289] hover:text-[#002c61] cursor-pointer transition-colors duration-200 underline-offset-2 hover:underline"
+            >
+              إنشاء حساب جديد
+            </button>
+          </p>
         </div>
       </div>
     </div>

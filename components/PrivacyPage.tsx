@@ -8,7 +8,7 @@ interface PrivacyPageProps {
 
 const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigate }) => {
     return (
-        <div className="bg-[#F8FAFA] min-h-screen py-20 px-4">
+        <div dir="rtl" className="bg-[#F8FAFA] min-h-screen py-20 px-4">
             <div className="container mx-auto max-w-4xl bg-white rounded-2xl shadow-sm border border-[#D2E1D9] p-8 md:p-12">
                 <h1 className="text-4xl font-black text-[#034289] mb-8 text-center pb-8 border-b border-gray-100">السياسات والخصوصية</h1>
 

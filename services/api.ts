@@ -1,25 +1,28 @@
-import { Course, Lecture, CurriculumSection } from '../types';
-import { getToken } from '../utils/token';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
-
-async function authedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = getToken();
-    console.log('[authedFetch] Token retrieved:', token ? 'EXISTS' : 'MISSING');
-    console.log('[authedFetch] URL:', url);
-    
-    const res = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(options.headers as Record<string, string> || {}),
-        },
-    });
-    
-    console.log('[authedFetch] Response status:', res.status);
-    return res;
-}
+import { Course, Lecture, CurriculumSection } from '../types/types';
+import { authedFetch } from '../api/client';
+import { sanitizeSearchQuery } from '../utils/validation';
+import type {
+    BackendSubject,
+    BackendLevel,
+    BackendLecture,
+    BackendCurriculumSection,
+    BackendActivity,
+    BackendMediaFile,
+    TeacherStats,
+    TeacherStudent,
+    Testimonial,
+    Order,
+    CouponValidation,
+    StudentProgress,
+    StudentEnrollment,
+    StudentCourse,
+    LectureDetail,
+    WatchProgressData,
+    AIConversation,
+    AIMessage,
+    PlatformStats,
+    ApiErrorWithStatus,
+} from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/v1$/, '') ?? '';
 
@@ -31,7 +34,7 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
 
         const raw = Array.isArray(json) ? json : (json.data ?? []);
         const items = Array.isArray(raw) ? raw : [];
-        const data: Course[] = items.map((item: any) => ({
+        const data: Course[] = items.map((item: BackendSubject) => ({
             id: Number(item.id) || 0,
             guidId: typeof item.id === 'string' && item.id.includes('-') ? item.id : (item.guidId || undefined),
             title: item.title ?? '',
@@ -51,9 +54,10 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
             lastUpdated: item.createdAt ?? item.updatedAt ?? undefined,
         }));
         return { data };
-    } catch (error: any) {
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error fetching courses', error);
-        return { data: [], error: error?.message || 'Unknown error' };
+        return { data: [], error: errorMessage };
     }
 };
 
@@ -68,10 +72,10 @@ export const fetchCourseById = async (id: string | number): Promise<{ data: Cour
         if (!item) return { data: null };
 
         const curriculum: CurriculumSection[] | undefined = Array.isArray(item.curriculumSections)
-            ? item.curriculumSections.map((s: any) => ({
+            ? item.curriculumSections.map((s: BackendCurriculumSection) => ({
                 section: s.title ?? '',
                 lectures: Array.isArray(s.lectures)
-                    ? s.lectures.map((l: any): Lecture => ({
+                    ? s.lectures.map((l: BackendLecture): Lecture => ({
                         id: Number(l.id),
                         title: l.title ?? '',
                         durationSeconds: typeof l.durationSeconds === 'number' ? l.durationSeconds : undefined,
@@ -102,9 +106,10 @@ export const fetchCourseById = async (id: string | number): Promise<{ data: Cour
             curriculum,
         };
         return { data };
-    } catch (error: any) {
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error fetching course by ID', error);
-        return { data: null, error: error?.message || 'Unknown error' };
+        return { data: null, error: errorMessage };
     }
 };
 
@@ -123,26 +128,26 @@ export const sendContactMessage = async (data: { name: string; email: string; ty
     }
 };
 
-export const fetchStats = async () => {
+export const fetchStats = async (): Promise<PlatformStats | null> => {
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/stats`);
         if (!res.ok) throw new Error('Failed to fetch stats');
         const json = await res.json();
-        return json.data;
+        return json.data as PlatformStats;
     } catch (error) {
         console.error('Error fetching stats', error);
         return null;
     }
 };
 
-export const fetchTestimonials = async () => {
+export const fetchTestimonials = async (): Promise<Testimonial[]> => {
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/testimonials`);
         if (!res.ok) throw new Error(`Failed to fetch testimonials: ${res.status} ${res.statusText}`);
         const json = await res.json();
         const raw = Array.isArray(json) ? json : (json.data ?? []);
         if (Array.isArray(raw)) {
-            return raw.map((t: any) => ({
+            return raw.map((t: Testimonial) => ({
                 id: t.id,
                 name: t.userName || t.studentName || 'طالب',
                 role: t.role || t.jobTitle || '',
@@ -159,7 +164,7 @@ export const fetchTestimonials = async () => {
     }
 };
 
-export const validateCoupon = async (code: string, subjectId?: string) => {
+export const validateCoupon = async (code: string, subjectId?: string): Promise<CouponValidation> => {
     try {
         const res = await fetch(`${API_BASE_URL}/api/v1/orders/validate-coupon`, {
             method: 'POST',
@@ -168,14 +173,14 @@ export const validateCoupon = async (code: string, subjectId?: string) => {
         });
         if (!res.ok) throw new Error('Invalid coupon');
         const json = await res.json();
-        return json.data;
+        return json.data as CouponValidation;
     } catch (error) {
         console.error('Error validating coupon', error);
         throw error;
     }
 };
 
-export const createOrder = async (data: { subjectId: string, paymentMethod: string, couponCode?: string, billingFullName: string, billingEmail: string, billingPhone?: string }) => {
+export const createOrder = async (data: { subjectId: string; paymentMethod: string; couponCode?: string; billingFullName: string; billingEmail: string; billingPhone?: string }): Promise<Order> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/orders`, {
             method: 'POST',
@@ -183,26 +188,26 @@ export const createOrder = async (data: { subjectId: string, paymentMethod: stri
         });
         if (!res.ok) throw new Error('Failed to create order');
         const json = await res.json();
-        return json.data;
+        return json.data as Order;
     } catch (error) {
         console.error('Error creating order', error);
         throw error;
     }
 };
 
-export const startAIConversation = async () => {
+export const startAIConversation = async (): Promise<AIConversation> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/ai/conversations`, { method: 'POST' });
         if (!res.ok) throw new Error('Failed to start AI conversation');
         const json = await res.json();
-        return json.data;
+        return json.data as AIConversation;
     } catch (error) {
         console.error('Error starting AI conversation', error);
         throw error;
     }
 };
 
-export const sendAIMessage = async (conversationId: string, message: string) => {
+export const sendAIMessage = async (conversationId: string, message: string): Promise<AIMessage> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/ai/conversations/${conversationId}/messages`, {
             method: 'POST',
@@ -210,7 +215,7 @@ export const sendAIMessage = async (conversationId: string, message: string) => 
         });
         if (!res.ok) throw new Error('Failed to send AI message');
         const json = await res.json();
-        return json.data;
+        return json.data as AIMessage;
     } catch (error) {
         console.error('Error sending AI message', error);
         throw error;
@@ -221,19 +226,19 @@ export const sendAIMessage = async (conversationId: string, message: string) => 
 // Teacher Dashboard APIs - Using COURSES (not subjects)
 // ═══════════════════════════════════════════════════════════
 
-export const fetchTeacherStats = async () => {
+export const fetchTeacherStats = async (): Promise<TeacherStats | null> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/stats`);
         if (!res.ok) throw new Error('Failed to fetch teacher stats');
         const json = await res.json();
-        return json.data;
+        return json.data as TeacherStats;
     } catch (error) {
         console.error('Error fetching teacher stats', error);
         return null;
     }
 };
 
-export const pingTeacherAuth = async () => {
+export const pingTeacherAuth = async (): Promise<boolean> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher`);
         return res.status === 200;
@@ -242,28 +247,28 @@ export const pingTeacherAuth = async () => {
     }
 };
 
-export const fetchTeacherCourses = async () => {
+export const fetchTeacherCourses = async (): Promise<BackendSubject[]> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects`);
         if (!res.ok) throw new Error('Failed to fetch teacher subjects');
         const json = await res.json();
-        return json.data;
+        return (json.data ?? []) as BackendSubject[];
     } catch (error) {
         console.error('Error fetching teacher subjects', error);
         return [];
     }
 };
 
-export const createTeacherCourse = async (data: { 
-    title: string; 
-    description?: string; 
+export const createTeacherCourse = async (data: {
+    title: string;
+    description?: string;
     category: string;
     duration?: number;
     level?: string;
     language?: string;
     price?: number;
     imageUrl?: string;
-}) => {
+}): Promise<BackendSubject> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects`, {
             method: 'POST',
@@ -271,7 +276,7 @@ export const createTeacherCourse = async (data: {
         });
         if (!res.ok) throw new Error('Failed to create course');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendSubject;
     } catch (error) {
         console.error('Error creating course', error);
         throw error;
@@ -295,29 +300,40 @@ export const createCourseWithCurriculum = async (data: {
             title: string;
             duration?: string;
             videoUrl?: string;
+            mediaFileId?: string;
+            videoFileId?: string;
+            documentFileIds?: string[];
             sortOrder?: number;
             isPreview?: boolean;
         }>;
     }>;
 }) => {
     const payload = {
-        name: data.title,       // backend SubjectCreateDTO requires "name"
-        title: data.title,      // also send title as fallback
+        title: data.title,
         description: data.description,
+        category: data.category,
+        duration: data.duration,
+        level: data.level,
+        language: data.language,
+        price: data.price,
+        imageUrl: data.imageUrl,
         icon: '📚',
         levels: data.sections.map((section, idx) => ({
-            name: section.title,  // backend LevelCreateDTO requires "name"
+            title: section.title,
             sortOrder: section.sortOrder ?? idx,
             lectures: section.lectures.map((lec, lecIdx) => ({
                 title: lec.title,
                 duration: lec.duration,
                 videoUrl: lec.videoUrl,
+                mediaFileId: lec.mediaFileId,
+                videoFileId: lec.videoFileId,
+                documentFileIds: lec.documentFileIds,
                 sortOrder: lec.sortOrder ?? lecIdx,
             })),
         })),
     };
 
-    const res = await authedFetch(`${API_BASE}/teacher/subjects`, {
+    const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects`, {
         method: 'POST',
         body: JSON.stringify(payload),
     });
@@ -325,7 +341,7 @@ export const createCourseWithCurriculum = async (data: {
     if (!res.ok) {
         const errorJson = await res.json().catch(() => ({}));
         const message = errorJson.error?.message || errorJson.message || errorJson.title || `فشل إنشاء المادة (${res.status})`;
-        const error: any = new Error(message);
+        const error: ApiErrorWithStatus = new Error(message);
         error.status = res.status;
         error.response = errorJson;
         throw error;
@@ -335,9 +351,9 @@ export const createCourseWithCurriculum = async (data: {
     return json.data;
 };
 
-export const updateTeacherCourse = async (courseId: string | number, data: { 
-    title?: string; 
-    description?: string; 
+export const updateTeacherCourse = async (courseId: string | number, data: {
+    title?: string;
+    description?: string;
     category?: string;
     duration?: number;
     level?: string;
@@ -345,36 +361,55 @@ export const updateTeacherCourse = async (courseId: string | number, data: {
     price?: number;
     imageUrl?: string;
     status?: string;
+    levels?: Array<{
+        id?: string;
+        title: string;
+        sortOrder: number;
+        lectures?: Array<{
+            id?: string;
+            title: string;
+            duration?: string;
+            videoUrl?: string;
+            mediaFileId?: string;
+            videoFileId?: string;
+            documentFileIds?: string[];
+            sortOrder: number;
+        }>;
+    }>;
 }) => {
-    try {
-        const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-        if (!res.ok) throw new Error('Failed to update subject');
-        const json = await res.json();
-        return json.data;
-    } catch (error) {
-        console.error('Error updating subject', error);
+    const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        const message = errorJson.error?.message || errorJson.message || errorJson.title || `فشل تحديث المادة (${res.status})`;
+        const error: ApiErrorWithStatus = new Error(message);
+        error.status = res.status;
+        error.response = errorJson;
         throw error;
     }
+
+    const json = await res.json();
+    return json.data as BackendSubject;
 };
 
-export const deleteTeacherCourse = async (courseId: number) => {
+export const deleteTeacherCourse = async (courseId: string | number): Promise<BackendSubject> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/subjects/${courseId}`, {
             method: 'DELETE'
         });
         if (!res.ok) throw new Error('Failed to delete subject');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendSubject;
     } catch (error) {
         console.error('Error deleting subject', error);
         throw error;
     }
 };
 
-export const createCourseSection = async (courseId: number, data: { title: string; sortOrder?: number }) => {
+export const createCourseSection = async (courseId: number, data: { title: string; sortOrder?: number }): Promise<BackendLevel> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/${courseId}/sections`, {
             method: 'POST',
@@ -382,14 +417,14 @@ export const createCourseSection = async (courseId: number, data: { title: strin
         });
         if (!res.ok) throw new Error('Failed to create section');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendLevel;
     } catch (error) {
         console.error('Error creating section', error);
         throw error;
     }
 };
 
-export const updateCourseSection = async (sectionId: number, data: { title?: string; sortOrder?: number }) => {
+export const updateCourseSection = async (sectionId: number, data: { title?: string; sortOrder?: number }): Promise<BackendLevel> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
             method: 'PUT',
@@ -397,14 +432,14 @@ export const updateCourseSection = async (sectionId: number, data: { title?: str
         });
         if (!res.ok) throw new Error('Failed to update section');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendLevel;
     } catch (error) {
         console.error('Error updating section', error);
         throw error;
     }
 };
 
-export const deleteCourseSection = async (sectionId: number) => {
+export const deleteCourseSection = async (sectionId: number): Promise<void> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}`, {
             method: 'DELETE'
@@ -418,13 +453,13 @@ export const deleteCourseSection = async (sectionId: number) => {
     }
 };
 
-export const createSectionLecture = async (sectionId: number, data: { 
-    title: string; 
+export const createSectionLecture = async (sectionId: number, data: {
+    title: string;
     duration?: string;
     videoUrl?: string;
     sortOrder?: number;
     isPreview?: boolean;
-}) => {
+}): Promise<BackendLecture> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/sections/${sectionId}/lectures`, {
             method: 'POST',
@@ -432,20 +467,20 @@ export const createSectionLecture = async (sectionId: number, data: {
         });
         if (!res.ok) throw new Error('Failed to create lecture');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendLecture;
     } catch (error) {
         console.error('Error creating lecture', error);
         throw error;
     }
 };
 
-export const updateSectionLecture = async (lectureId: number, data: { 
-    title?: string; 
+export const updateSectionLecture = async (lectureId: number, data: {
+    title?: string;
     duration?: string;
     videoUrl?: string;
     sortOrder?: number;
     isPreview?: boolean;
-}) => {
+}): Promise<BackendLecture> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
             method: 'PUT',
@@ -453,14 +488,14 @@ export const updateSectionLecture = async (lectureId: number, data: {
         });
         if (!res.ok) throw new Error('Failed to update lecture');
         const json = await res.json();
-        return json.data;
+        return json.data as BackendLecture;
     } catch (error) {
         console.error('Error updating lecture', error);
         throw error;
     }
 };
 
-export const deleteSectionLecture = async (lectureId: number) => {
+export const deleteSectionLecture = async (lectureId: number): Promise<void> => {
     try {
         const res = await authedFetch(`${API_BASE_URL}/api/v1/subjects/lectures/${lectureId}`, {
             method: 'DELETE'
@@ -477,9 +512,21 @@ export const deleteSectionLecture = async (lectureId: number) => {
 export const fetchTeacherStudents = async (search?: string, page = 1, perPage = 20) => {
     try {
         const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        params.append('page', page.toString());
-        params.append('per_page', perPage.toString());
+
+        // Sanitize search parameter
+        if (search) {
+            const sanitizedSearch = sanitizeSearchQuery(search);
+            if (sanitizedSearch) {
+                params.append('search', sanitizedSearch);
+            }
+        }
+
+        // Validate and sanitize pagination
+        const sanitizedPage = Math.max(1, Math.floor(Number(page)) || 1);
+        const sanitizedPerPage = Math.min(100, Math.max(1, Math.floor(Number(perPage)) || 20));
+
+        params.append('page', sanitizedPage.toString());
+        params.append('per_page', sanitizedPerPage.toString());
 
         const res = await authedFetch(`${API_BASE_URL}/api/v1/teacher/students?${params}`);
         if (!res.ok) throw new Error('Failed to fetch teacher students');
@@ -662,6 +709,7 @@ export const fetchSubjectById = async (id: string): Promise<{ data: any | null; 
                             title: l.title ?? '',
                             duration: l.duration || '10:00',
                             videoUrl: l.videoUrl || undefined,
+                            mediaFileId: l.mediaFileId || undefined,
                         }))
                         : []
                 }));

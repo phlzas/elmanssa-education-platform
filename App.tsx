@@ -20,9 +20,12 @@ const PATH_TO_PAGE: Record<string, Page> = {
   '/instructor': 'instructor',
   '/checkout': 'checkout',
   '/payment-success': 'payment-success',
+  '/payment-failed': 'payment-failed',
   '/watch': 'video-viewer',
   '/teacher': 'teacher-dashboard',
   '/admin': 'admin-dashboard',
+  '/verify-email': 'verify-email',
+  '/forgot-password': 'forgot-password',
 };
 
 const PAGE_TO_PATH: Record<Page, string> = Object.fromEntries(
@@ -46,7 +49,6 @@ import Stats from './components/Stats';
 import Features from './components/Features';
 import PopularCourses from './components/PopularCourses';
 import TeacherCTA from './components/TeacherCTA';
-import Testimonials from './components/Testimonials';
 import { useAuth } from './contexts/AuthContext';
 import ToastContainer from './contexts/ToastContext';
 
@@ -67,11 +69,14 @@ const ContactPage = React.lazy(() => import('./components/ContactPage'));
 const InstructorProfile = React.lazy(() => import('./components/InstructorProfile'));
 const CheckoutPage = React.lazy(() => import('./components/CheckoutPage'));
 const PaymentSuccessPage = React.lazy(() => import('./components/PaymentSuccessPage'));
+const PaymentFailedPage = React.lazy(() => import('./components/PaymentFailedPage'));
 const VideoViewer = React.lazy(() => import('./components/VideoViewer'));
 const TeacherDashboard = React.lazy(() => import('./components/TeacherDashboard'));
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const VerifyEmailPage = React.lazy(() => import('./components/VerifyEmailPage'));
+const ForgotPasswordPage = React.lazy(() => import('./components/ForgotPasswordPage'));
 
-export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard';
+export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'payment-failed' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard' | 'verify-email' | 'forgot-password';
 export type AccountType = 'student' | 'teacher' | 'admin';
 
 const App: React.FC = () => {
@@ -81,6 +86,7 @@ const App: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<number | string | null>(initial.courseId);
   const [initialDashboardTab, setInitialDashboardTab] = useState<string | undefined>(undefined);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string>('');
   const { user, isLoggedIn } = useAuth();
   const prevLoggedIn = useRef(isLoggedIn);
 
@@ -113,7 +119,7 @@ const App: React.FC = () => {
 
   // Auth + role-based access guard
   useEffect(() => {
-    const protectedPages: Page[] = ['dashboard', 'teacher-dashboard', 'admin-dashboard', 'video-viewer', 'checkout', 'payment-success'];
+    const protectedPages: Page[] = ['dashboard', 'teacher-dashboard', 'admin-dashboard', 'video-viewer', 'checkout', 'payment-success', 'ai'];
 
     // Unauthenticated — redirect to login
     if (!isLoggedIn || !user) {
@@ -141,9 +147,12 @@ const App: React.FC = () => {
     }
   }, [currentPage, isLoggedIn, user]);
 
-  const navigateTo = useCallback((page: Page, payload?: { accountType?: AccountType; courseId?: number | string; tab?: string }) => {
+  const navigateTo = useCallback((page: Page, payload?: { accountType?: AccountType; courseId?: number | string; tab?: string; email?: string }) => {
     if (page === 'signup' && payload?.accountType) {
       setInitialAccountType(payload.accountType);
+    }
+    if (page === 'verify-email' && payload?.email) {
+      setPendingVerifyEmail(payload.email);
     }
     const courseId = payload?.courseId ?? null;
     if (courseId) setSelectedCourseId(courseId);
@@ -172,7 +181,6 @@ const App: React.FC = () => {
             <Stats />
             <Features />
             <PopularCourses onNavigate={navigateTo} />
-            <Testimonials />
             <TeacherCTA onNavigate={navigateTo} />
           </>
         );
@@ -224,8 +232,14 @@ const App: React.FC = () => {
         ) : (
           <Hero onNavigate={navigateTo} />
         );
+      case 'payment-failed':
+        return <PaymentFailedPage onNavigate={navigateTo} />;
       case 'about':
         return <AboutPage onNavigate={navigateTo} />;
+      case 'verify-email':
+        return <VerifyEmailPage email={pendingVerifyEmail} onNavigate={navigateTo} />;
+      case 'forgot-password':
+        return <ForgotPasswordPage onNavigate={navigateTo} />;
       default:
         return <Hero onNavigate={navigateTo} />;
     }
@@ -235,10 +249,10 @@ const App: React.FC = () => {
     <>
       <ToastContainer />
       <div className="bg-[#FEFEFE] min-h-screen flex flex-col text-[#034289] overflow-x-hidden">
-        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && (
+        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && currentPage !== 'ai' && (
           <Header onNavigate={navigateTo} currentPage={currentPage} />
         )}
-        <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' ? 'pt-[82px]' : ''}`}>
+        <main className={`flex-grow ${currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && currentPage !== 'ai' ? 'pt-[82px]' : ''}`}>
           <Suspense fallback={
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="w-10 h-10 border-4 border-[#034289]/20 border-t-[#034289] rounded-full animate-spin" />
@@ -247,7 +261,7 @@ const App: React.FC = () => {
             {renderPage()}
           </Suspense>
         </main>
-        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && (
+        {currentPage !== 'dashboard' && currentPage !== 'video-viewer' && currentPage !== 'teacher-dashboard' && currentPage !== 'admin-dashboard' && currentPage !== 'ai' && (
           <Footer onNavigate={navigateTo} />
         )}
       </div>

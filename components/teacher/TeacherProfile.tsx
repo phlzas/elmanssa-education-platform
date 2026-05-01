@@ -5,8 +5,8 @@ const TeacherProfile: React.FC = () => {
     const { user } = useAuth();
 
     return (
-        <div style={{ animation: 'fadeIn 0.3s ease', maxWidth: '680px' }}>
-            <h2 style={{ fontSize: '19px', fontWeight: 800, color: '#f1f5f9', margin: '0 0 18px', fontFamily: "'Cairo', sans-serif", display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="animate-fade-in max-w-2xl">
+            <h2 className="text-lg font-extrabold text-slate-100 mb-4 font-cairo flex items-center gap-2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2">
                     <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
                     <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -15,95 +15,57 @@ const TeacherProfile: React.FC = () => {
             </h2>
 
             {/* Avatar card */}
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '18px',
-                background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: '14px', padding: '20px',
-            }}>
-                <div style={{
-                    width: '72px', height: '72px', borderRadius: '18px', flexShrink: 0,
-                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 4px 18px rgba(245,158,11,0.28)',
-                }}>
+            <div className="flex items-center gap-4 mb-4 bg-[#0f172a]/80 border border-white/[0.07] rounded-2xl p-5">
+                <div className="w-[72px] h-[72px] rounded-[18px] shrink-0 bg-gradient-to-br from-[#f59e0b] to-[#d97706] flex items-center justify-center shadow-lg shadow-amber-500/25">
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
                         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
                         <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </div>
                 <div>
-                    <div style={{ fontSize: '18px', fontWeight: 800, color: '#f1f5f9', fontFamily: "'Cairo', sans-serif" }}>
+                    <div className="text-lg font-extrabold text-slate-100 font-cairo">
                         {user?.name || 'المدرس'}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', fontFamily: "'Cairo', sans-serif" }}>
+                    <div className="text-[13px] text-slate-500 mt-0.5 font-cairo">
                         مدرس معتمد
                     </div>
-                    <button style={{
-                        marginTop: '8px', background: 'rgba(245,158,11,0.08)',
-                        border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px',
-                        padding: '5px 12px', color: '#f59e0b', fontSize: '12px', fontWeight: 600,
-                        cursor: 'pointer', fontFamily: "'Cairo', sans-serif",
-                    }}>
+                    <button className="mt-2 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg px-3 py-1.5 text-amber-400 text-xs font-semibold cursor-pointer hover:bg-amber-500/15 transition-colors duration-200 font-cairo">
                         تغيير الصورة
                     </button>
                 </div>
             </div>
 
             {/* Form */}
-            <div style={{
-                background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: '14px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px',
-            }}>
+            <div className="bg-[#0f172a]/80 border border-white/[0.07] rounded-2xl p-5 flex flex-col gap-4">
                 {[
                     { label: 'الاسم الكامل', value: user?.name || '', type: 'text', id: 'profile-name' },
                     { label: 'البريد الإلكتروني', value: user?.email || '', type: 'email', id: 'profile-email' },
                 ].map(f => (
                     <div key={f.id}>
-                        <label htmlFor={f.id} style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block', fontFamily: "'Cairo', sans-serif" }}>
+                        <label htmlFor={f.id} className="block text-xs font-bold text-slate-400 mb-1.5 font-cairo">
                             {f.label}
                         </label>
                         <input
-                            id={f.id} name={f.id} defaultValue={f.value} type={f.type}
-                            style={{
-                                width: '100%', padding: '11px 14px', boxSizing: 'border-box',
-                                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '10px', color: '#f1f5f9', fontSize: '14px',
-                                fontFamily: "'Cairo', sans-serif", outline: 'none',
-                                transition: 'border-color 0.15s',
-                            }}
-                            onFocus={e => e.currentTarget.style.borderColor = 'rgba(245,158,11,0.4)'}
-                            onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                            id={f.id}
+                            name={f.id}
+                            defaultValue={f.value}
+                            type={f.type}
+                            className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm font-cairo outline-none focus:border-amber-500/40 transition-colors duration-150 box-border"
                         />
                     </div>
                 ))}
                 <div>
-                    <label htmlFor="profile-bio" style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '6px', display: 'block', fontFamily: "'Cairo', sans-serif" }}>
+                    <label htmlFor="profile-bio" className="block text-xs font-bold text-slate-400 mb-1.5 font-cairo">
                         نبذة عنك
                     </label>
                     <textarea
-                        id="profile-bio" name="profile-bio" rows={3}
-                        style={{
-                            width: '100%', padding: '11px 14px', boxSizing: 'border-box',
-                            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: '10px', color: '#f1f5f9', fontSize: '14px',
-                            fontFamily: "'Cairo', sans-serif", outline: 'none', resize: 'vertical',
-                            transition: 'border-color 0.15s',
-                        }}
-                        onFocus={e => e.currentTarget.style.borderColor = 'rgba(245,158,11,0.4)'}
-                        onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                        id="profile-bio"
+                        name="profile-bio"
+                        rows={3}
+                        className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm font-cairo outline-none focus:border-amber-500/40 transition-colors duration-150 box-border resize-y"
                     />
                 </div>
-                <button style={{
-                    alignSelf: 'flex-start',
-                    background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none',
-                    borderRadius: '10px', padding: '11px 24px', color: '#fff',
-                    fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                    fontFamily: "'Cairo', sans-serif", boxShadow: '0 4px 14px rgba(245,158,11,0.28)',
-                    display: 'flex', alignItems: 'center', gap: '7px', transition: 'opacity 0.15s',
-                }}
-                    onMouseOver={e => e.currentTarget.style.opacity = '0.9'}
-                    onMouseOut={e => e.currentTarget.style.opacity = '1'}
-                >
+                <button className="self-start flex items-center gap-1.5 bg-gradient-to-r from-[#f59e0b] to-[#d97706] border-none rounded-xl px-6 py-2.5 text-white text-sm font-bold cursor-pointer hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-amber-500/25 font-cairo">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round"/>
                         <polyline points="17 21 17 13 7 13 7 21" strokeLinecap="round" strokeLinejoin="round"/>

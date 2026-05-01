@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { sanitizeErrorMessage } from '../utils/sanitize';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -21,7 +22,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const showToast = useCallback((message: string, type: ToastType) => {
     const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    // Sanitize message to prevent XSS via API error messages
+    const sanitizedMessage = sanitizeErrorMessage(message);
+    setToasts((prev) => [...prev, { id, message: sanitizedMessage, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);

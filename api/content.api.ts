@@ -3,7 +3,7 @@ import { apiRequest } from "./client";
 // ── Stats ──────────────────────────────────────────────────
 
 export function getStats() {
-    return apiRequest("/stats");
+    return apiRequest("/content/stats");
 }
 
 // ── Testimonials ───────────────────────────────────────────

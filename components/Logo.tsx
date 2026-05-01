@@ -59,7 +59,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', className = '' }) => {
       <img
         src="/assets/logo.svg"
         alt="Elmanssa - المنصة التعليمية"
-        className={`${sizeClasses[size]} w-auto object-contain`}
+        className={`${sizeClasses[size]} w-auto object-contain rounded-xl`}
         onError={() => setImageError(true)}
       />
     </div>

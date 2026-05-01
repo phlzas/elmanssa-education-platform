@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FILTER_LEVELS } from '../constants';
 import CourseCard from './CourseCard';
 import { getCourses } from '../api/courses.api';
-import { Course } from '../types';
+import { Course } from '../types/types';
 import { Page } from '../App';
 
 interface CoursesPageProps {
@@ -35,6 +35,68 @@ function mapCourseItem(item: any): Course {
     lastUpdated: item.createdAt ?? item.updatedAt ?? undefined,
   };
 }
+
+// Search icon SVG
+const SearchIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+  </svg>
+);
+
+// X icon SVG
+const XIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+
+// Filter icon SVG
+const FilterIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+);
+
+// Chevron down icon SVG
+const ChevronDownIcon = ({ rotated }: { rotated?: boolean }) => (
+  <svg
+    className={`w-4 h-4 transition-transform duration-200 ${rotated ? 'rotate-180' : ''}`}
+    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+    strokeLinecap="round" strokeLinejoin="round"
+  >
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+
+// Chevron left/right for pagination
+const ChevronRightIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+// Skeleton card for loading state
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+    <div className="h-44 bg-[#e2e2e9]" />
+    <div className="p-5 space-y-3">
+      <div className="h-4 bg-[#e2e2e9] rounded-full w-3/4" />
+      <div className="h-3 bg-[#e2e2e9] rounded-full w-1/2" />
+      <div className="h-3 bg-[#e2e2e9] rounded-full w-1/3" />
+      <div className="flex justify-between items-center pt-2">
+        <div className="h-5 bg-[#e2e2e9] rounded-full w-1/4" />
+        <div className="h-8 bg-[#e2e2e9] rounded-xl w-1/3" />
+      </div>
+    </div>
+  </div>
+);
 
 const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, isTeacher = false }) => {
 
@@ -149,221 +211,306 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, isTeacher = false
     return pages;
   };
 
+  const hasActiveFilters = selectedLevel || selectedCategory || searchQuery;
+
   return (
-    <div className="relative">
+    <div className="min-h-screen bg-[#f9f9ff]" dir="rtl">
+
       {/* Page Header */}
-      <div className="bg-gradient-to-br from-[#034289]/5 via-transparent to-[#4F8751]/5 py-12 md:py-16">
+      <div className="bg-gradient-to-bl from-[#034289] to-[#002c61] py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto animate-fade-in-up">
-            <span className="inline-block px-4 py-2 bg-[#4F8751]/10 rounded-full text-[#4F8751] font-semibold text-sm mb-4">
+          <div className="text-center max-w-3xl mx-auto">
+            <span className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-white/80 font-medium text-sm mb-4 tracking-wide">
               اكتشف الدورات
             </span>
-            <h1 className="text-4xl md:text-5xl font-black text-[#034289] mb-4">
+            <h1 className="text-4xl md:text-5xl font-black text-white mb-3 leading-tight">
               استكشف{' '}
-              <span className="text-[#4F8751]">مكتبة الدورات</span>
+              <span className="text-[#b4f2b2]">مكتبة الدورات</span>
             </h1>
-            <p className="text-[#034289]/70 text-lg mb-8">
-              {totalCount > 0 ? `${totalCount} دورة تعليمية في مختلف المجالات` : 'أكثر من 1,200 دورة تعليمية في مختلف المجالات'}
+            <p className="text-white/70 text-lg mb-8">
+              {totalCount > 0
+                ? `${totalCount} دورة تعليمية في مختلف المجالات`
+                : 'أكثر من 1,200 دورة تعليمية في مختلف المجالات'}
             </p>
 
-            {/* Debounced Search Bar */}
+            {/* Search Bar */}
             <div className="max-w-2xl mx-auto relative">
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40 pointer-events-none">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+              <label htmlFor="courses-search" className="sr-only">ابحث عن دورة</label>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/50 pointer-events-none">
+                <SearchIcon />
               </div>
               <input
+                id="courses-search"
                 type="text"
                 placeholder="ابحث عن دورة..."
                 value={searchInput}
                 onChange={(e) => handleSearchInputChange(e.target.value)}
-                className="w-full pr-14 pl-12 py-4 bg-white border-2 border-[#D2E1D9] rounded-2xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 shadow-lg transition-all duration-300 text-lg"
+                className="w-full pr-12 pl-12 py-4 bg-white rounded-2xl text-[#1a1c20] placeholder:text-[#737782] focus:outline-none focus:ring-2 focus:ring-[#034289]/40 shadow-lg transition-all duration-200 text-base"
               />
               {searchInput && (
                 <button
                   onClick={() => handleSearchInputChange('')}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#034289]/40 hover:text-[#034289] transition-colors"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#737782] hover:text-[#1a1c20] transition-colors duration-200 cursor-pointer"
                   aria-label="مسح البحث"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <XIcon />
                 </button>
               )}
             </div>
           </div>
 
           {/* Quick Category Tags */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <button
-              onClick={() => handleCategoryClick('')}
-              className={`px-4 py-2 font-medium rounded-full text-sm transition-all hover:shadow-lg ${!selectedCategory ? 'bg-[#4F8751] text-white' : 'bg-white border border-[#D2E1D9] text-[#034289] hover:border-[#4F8751] hover:text-[#4F8751]'}`}
-            >
-              الكل
-            </button>
-            {allCategories.slice(0, 5).map((cat) => (
+          {allCategories.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
               <button
-                key={cat}
-                onClick={() => handleCategoryClick(cat)}
-                className={`px-4 py-2 font-medium rounded-full text-sm transition-all shadow-sm ${selectedCategory === cat ? 'bg-[#4F8751] text-white' : 'bg-white border border-[#D2E1D9] text-[#034289] hover:border-[#4F8751] hover:text-[#4F8751]'}`}
+                onClick={() => handleCategoryClick('')}
+                className={`px-4 py-1.5 font-medium rounded-full text-sm transition-colors duration-200 cursor-pointer ${
+                  !selectedCategory
+                    ? 'bg-white text-[#034289]'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
               >
-                {cat}
+                الكل
               </button>
-            ))}
-          </div>
+              {allCategories.slice(0, 5).map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryClick(cat)}
+                  className={`px-4 py-1.5 font-medium rounded-full text-sm transition-colors duration-200 cursor-pointer ${
+                    selectedCategory === cat
+                      ? 'bg-white text-[#034289]'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
         {/* Mobile Filter Toggle */}
         <div className="lg:hidden mb-4">
           <button
             onClick={() => setShowFiltersOnMobile(!showFiltersOnMobile)}
-            className="w-full flex items-center justify-between px-5 py-4 bg-white border border-[#D2E1D9] rounded-xl shadow-sm"
+            className="w-full flex items-center justify-between px-5 py-3.5 bg-white rounded-xl shadow-sm border border-[#c3c6d2]/30 cursor-pointer transition-colors duration-200 hover:bg-[#ededf4]"
           >
             <span className="flex items-center gap-2 text-[#034289] font-semibold">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
+              <FilterIcon />
               الفلاتر
+              {hasActiveFilters && (
+                <span className="w-5 h-5 bg-[#034289] text-white text-xs rounded-full flex items-center justify-center">
+                  {[selectedLevel, selectedCategory, searchQuery].filter(Boolean).length}
+                </span>
+              )}
             </span>
-            <svg className={`w-5 h-5 text-[#034289] transition-transform duration-300 ${showFiltersOnMobile ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDownIcon rotated={showFiltersOnMobile} />
           </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Filters Sidebar */}
+        {/* Main layout: RTL — sidebar on right, grid on left */}
+        <div className="flex flex-col lg:flex-row-reverse gap-8">
+
+          {/* Filter Sidebar (right in RTL) */}
           <aside className={`w-full lg:w-72 xl:w-80 flex-shrink-0 ${showFiltersOnMobile ? 'block' : 'hidden lg:block'}`}>
-            <div className="card-premium glass bg-white/90 p-6 rounded-2xl border border-[#D2E1D9]/50 sticky top-24 shadow-lg">
+            <div className="bg-white rounded-2xl p-6 shadow-sm sticky top-24">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-[#034289]">الفلاتر</h3>
-                <button onClick={handleReset} className="text-sm text-[#4F8751] font-medium hover:underline">
-                  إعادة تعيين
-                </button>
+                <h3 className="text-lg font-bold text-[#1a1c20]">الفلاتر</h3>
+                {hasActiveFilters && (
+                  <button
+                    onClick={handleReset}
+                    className="text-sm text-[#4F8751] font-medium hover:underline cursor-pointer transition-colors duration-200"
+                  >
+                    إعادة تعيين
+                  </button>
+                )}
               </div>
 
               {/* Level Filter */}
-              <div className="mb-8">
-                <h4 className="text-md font-bold text-[#034289] mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-[#D2E1D9]/50 rounded-lg flex items-center justify-center">
-                    <svg className="w-4 h-4 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </span>
+              <div className="mb-7">
+                <h4 className="text-sm font-bold text-[#434751] uppercase tracking-wider mb-4">
                   المستوى
                 </h4>
                 <div className="space-y-3">
-                  {FILTER_LEVELS.map((level) => (
-                    <label key={level} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="radio"
-                        name="level"
-                        checked={selectedLevel === level}
-                        onChange={() => handleLevelChange(level)}
-                        className="w-5 h-5 text-[#4F8751] focus:ring-[#4F8751] border-2 border-[#D2E1D9] rounded-full"
-                      />
-                      <span className="text-[#034289]/80 group-hover:text-[#034289] transition-colors">{level}</span>
-                    </label>
-                  ))}
+                  {FILTER_LEVELS.map((level) => {
+                    const inputId = `level-${level}`;
+                    return (
+                      <label key={level} htmlFor={inputId} className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          id={inputId}
+                          type="radio"
+                          name="level"
+                          checked={selectedLevel === level}
+                          onChange={() => handleLevelChange(level)}
+                          className="w-4 h-4 text-[#034289] focus:ring-[#034289] border-[#c3c6d2] cursor-pointer"
+                        />
+                        <span className="text-[#434751] group-hover:text-[#1a1c20] transition-colors duration-200 text-sm">
+                          {level}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="h-px bg-[#ededf4] mb-7" />
 
               {/* Category Filter */}
               {allCategories.length > 0 && (
                 <div>
-                  <h4 className="text-md font-bold text-[#034289] mb-4 flex items-center gap-2">
-                    <span className="w-8 h-8 bg-[#D2E1D9]/50 rounded-lg flex items-center justify-center">
-                      <svg className="w-4 h-4 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                      </svg>
-                    </span>
+                  <h4 className="text-sm font-bold text-[#434751] uppercase tracking-wider mb-4">
                     التصنيف
                   </h4>
                   <div className="space-y-3">
-                    {allCategories.map((cat) => (
-                      <label key={cat} className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={selectedCategory === cat}
-                          onChange={() => handleCategoryClick(cat)}
-                          className="w-5 h-5 text-[#4F8751] rounded focus:ring-[#4F8751] border-2 border-[#D2E1D9]"
-                        />
-                        <span className="text-[#034289]/80 group-hover:text-[#034289] transition-colors">{cat}</span>
-                      </label>
-                    ))}
+                    {allCategories.map((cat) => {
+                      const inputId = `cat-${cat}`;
+                      return (
+                        <label key={cat} htmlFor={inputId} className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            id={inputId}
+                            type="checkbox"
+                            checked={selectedCategory === cat}
+                            onChange={() => handleCategoryClick(cat)}
+                            className="w-4 h-4 text-[#034289] rounded focus:ring-[#034289] border-[#c3c6d2] cursor-pointer"
+                          />
+                          <span className="text-[#434751] group-hover:text-[#1a1c20] transition-colors duration-200 text-sm">
+                            {cat}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
           </aside>
 
-          {/* Courses Grid */}
-          <div className="flex-1">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-              <p className="text-[#034289]/70">
-                عرض <span className="font-bold text-[#034289]">{totalCount}</span> دورة
+          {/* Courses Grid (left in RTL) */}
+          <div className="flex-1 min-w-0">
+
+            {/* Results count */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+              <p className="text-[#434751] text-sm">
+                عرض{' '}
+                <span className="font-bold text-[#1a1c20]">{totalCount}</span>{' '}
+                دورة
                 {totalPages > 1 && (
-                  <span className="mr-2 text-sm">(صفحة {currentPage} من {totalPages})</span>
+                  <span className="mr-2 text-xs text-[#737782]">
+                    (صفحة {currentPage} من {totalPages})
+                  </span>
                 )}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {isLoading ? (
-                <p className="text-center w-full col-span-3 py-10 text-[#034289]/60">جاري تحميل الدورات...</p>
-              ) : error ? (
-                <p className="text-center w-full col-span-3 py-10 text-red-600">حدث خطأ أثناء تحميل الدورات: {error}</p>
-              ) : courses.length > 0 ? (
-                courses.map((course, index) => (
-                  <div key={course.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
+            {/* Loading State */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {Array.from({ length: PER_PAGE }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : error ? (
+              /* Error State */
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-[#1a1c20] mb-2">فشل تحميل الدورات</h3>
+                <p className="text-[#737782] text-sm mb-6 max-w-xs">{error}</p>
+                <button
+                  onClick={loadCourses}
+                  className="px-6 py-2.5 bg-[#034289] text-white font-semibold rounded-xl hover:bg-[#002c61] transition-colors duration-200 cursor-pointer"
+                >
+                  إعادة المحاولة
+                </button>
+              </div>
+            ) : courses.length === 0 ? (
+              /* Empty State */
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 bg-[#ededf4] rounded-2xl flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-[#737782]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-[#1a1c20] mb-2">لا توجد دورات مطابقة</h3>
+                <p className="text-[#737782] text-sm mb-6 max-w-xs">
+                  جرّب تغيير معايير البحث أو إعادة تعيين الفلاتر
+                </p>
+                <button
+                  onClick={handleReset}
+                  className="px-6 py-2.5 bg-[#034289] text-white font-semibold rounded-xl hover:bg-[#002c61] transition-colors duration-200 cursor-pointer"
+                >
+                  إعادة تعيين الفلاتر
+                </button>
+              </div>
+            ) : (
+              /* Courses Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {courses.map((course, index) => (
+                  <div
+                    key={course.id}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 60}ms` }}
+                  >
                     <CourseCard
                       course={course}
                       onClick={() => onNavigate && onNavigate('course-detail', { courseId: course.guidId || course.id })}
                       onEnroll={() => onNavigate && onNavigate('checkout', { courseId: course.guidId || course.id })}
                     />
                   </div>
-                ))
-              ) : (
-                <p className="text-center w-full col-span-3 py-10 text-[#034289]/60">لا توجد دورات مطابقة للبحث</p>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-12">
+            {!isLoading && !error && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 mt-12">
+                {/* Previous (in RTL: right arrow goes to previous) */}
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl border border-[#D2E1D9] text-[#034289] hover:bg-[#D2E1D9]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="الصفحة السابقة"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#c3c6d2]/50 text-[#434751] hover:bg-[#ededf4] hover:text-[#034289] transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <ChevronRightIcon />
                 </button>
+
                 {getPageNumbers().map((p, i) =>
                   p === '...' ? (
-                    <span key={`ellipsis-${i}`} className="text-[#034289]/50 px-1">...</span>
+                    <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-[#737782] text-sm">
+                      ...
+                    </span>
                   ) : (
                     <button
                       key={p}
                       onClick={() => handlePageChange(p as number)}
-                      className={`w-10 h-10 flex items-center justify-center rounded-xl font-medium transition-colors ${currentPage === p ? 'bg-[#4F8751] text-white' : 'border border-[#D2E1D9] text-[#034289] hover:bg-[#D2E1D9]/30'}`}
+                      aria-label={`الصفحة ${p}`}
+                      aria-current={currentPage === p ? 'page' : undefined}
+                      className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                        currentPage === p
+                          ? 'bg-[#034289] text-white shadow-sm'
+                          : 'border border-[#c3c6d2]/50 text-[#434751] hover:bg-[#ededf4] hover:text-[#034289]'
+                      }`}
                     >
                       {p}
                     </button>
                   )
                 )}
+
+                {/* Next */}
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl border border-[#D2E1D9] text-[#034289] hover:bg-[#D2E1D9]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="الصفحة التالية"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border border-[#c3c6d2]/50 text-[#434751] hover:bg-[#ededf4] hover:text-[#034289] transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
+                  <ChevronLeftIcon />
                 </button>
               </div>
             )}
@@ -375,22 +522,22 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onNavigate, isTeacher = false
       {isTeacher ? (
         <button
           onClick={() => onNavigate && onNavigate('teacher-dashboard')}
-          className="fixed bottom-8 left-8 z-50 flex items-center gap-2 px-5 py-3.5 bg-[#4F8751] text-white font-bold rounded-2xl shadow-2xl hover:bg-[#3d6b3f] transition-all duration-200 hover:scale-105"
+          className="fixed bottom-8 left-8 z-50 flex items-center gap-2 px-5 py-3.5 bg-[#4F8751] text-white font-bold rounded-2xl shadow-2xl hover:bg-[#336a37] transition-colors duration-200 cursor-pointer"
           aria-label="إنشاء دورة جديدة"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" />
           </svg>
           <span>إنشاء دورة</span>
         </button>
       ) : showBackToTop ? (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-8 left-8 z-50 w-12 h-12 bg-[#034289] text-white rounded-2xl shadow-2xl hover:bg-[#023070] transition-all duration-200 hover:scale-105 flex items-center justify-center"
+          className="fixed bottom-8 left-8 z-50 w-12 h-12 bg-[#034289] text-white rounded-2xl shadow-2xl hover:bg-[#002c61] transition-colors duration-200 cursor-pointer flex items-center justify-center"
           aria-label="العودة للأعلى"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m18 15-6-6-6 6" />
           </svg>
         </button>
       ) : null}

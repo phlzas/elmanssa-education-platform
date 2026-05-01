@@ -9,10 +9,8 @@ interface PricingPageProps {
 
 const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
     return (
-        <div className="bg-[#F8FAFA] min-h-screen py-20 px-4">
-            <div className="container mx-auto">
+        <div dir="rtl" className="bg-[#F8FAFA] min-h-screen py-20 px-4" style={{ fontFamily: "'Cairo', sans-serif" }}>
                 <div className="text-center mb-16">
-                    <h1 className="text-4xl md:text-5xl font-black text-[#034289] mb-4">خطط تناسب طموحك</h1>
                     <p className="text-[#034289]/60 text-lg max-w-2xl mx-auto">
                         اختر الخطة المثالية لتبدأ رحلة التعلم. سواء كنت مبتدئاً أو محترفاً، لدينا ما يناسبك.
                     </p>
@@ -20,12 +18,12 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
                     {/* Free Plan */}
-                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D2E1D9] hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 group-hover:bg-[#034289] transition-colors" />
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D2E1D9] hover:shadow-xl transition-all duration-200 transform hover:-translate-y-2 relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 group-hover:bg-[#034289] transition-colors duration-200" />
                         <h3 className="text-2xl font-bold text-[#034289] mb-2">الأساسية</h3>
                         <div className="text-4xl font-black text-[#034289] mb-6">مجاناً<span className="text-base font-normal text-gray-400">/للأبد</span></div>
                         <p className="text-gray-500 mb-8">بداية مثالية لاستكشاف عالم البرمجة.</p>
-                        <button onClick={() => onNavigate('signup')} className="w-full py-3 border-2 border-[#034289] text-[#034289] font-bold rounded-xl hover:bg-[#034289] hover:text-white transition-colors mb-8">
+                        <button onClick={() => onNavigate('signup')} className="w-full py-3 border-2 border-[#034289] text-[#034289] font-bold rounded-xl hover:bg-[#034289] hover:text-white transition-colors duration-200 cursor-pointer mb-8">
                             سجل مجاناً
                         </button>
                         <ul className="space-y-4">
@@ -44,7 +42,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                         <h3 className="text-2xl font-bold text-white mb-2">الاحترافية</h3>
                         <div className="text-4xl font-black text-white mb-6">299<span className="text-base font-normal text-white/60">/شهرياً</span></div>
                         <p className="text-white/70 mb-8">كل ما تحتاجه لتصبح محترفاً في مجالك.</p>
-                        <button onClick={() => onNavigate('signup')} className="w-full py-3 bg-[#4F8751] text-white font-bold rounded-xl hover:bg-[#3d6a3f] transition-colors mb-8 shadow-lg shadow-[#4F8751]/30">
+                        <button onClick={() => onNavigate('signup')} className="w-full py-3 bg-[#4F8751] text-white font-bold rounded-xl hover:bg-[#3d6a3f] transition-colors duration-200 cursor-pointer mb-8 shadow-lg shadow-[#4F8751]/30">
                             اشترك الآن
                         </button>
                         <ul className="space-y-4">
@@ -58,12 +56,12 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                     </div>
 
                     {/* Business Plan */}
-                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D2E1D9] hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 group-hover:bg-[#4F8751] transition-colors" />
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#D2E1D9] hover:shadow-xl transition-all duration-200 transform hover:-translate-y-2 relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-200 group-hover:bg-[#4F8751] transition-colors duration-200" />
                         <h3 className="text-2xl font-bold text-[#034289] mb-2">للشركات</h3>
                         <div className="text-4xl font-black text-[#034289] mb-6">تواصل<span className="text-base font-normal text-gray-400">/معنا</span></div>
                         <p className="text-gray-500 mb-8">حلول مخصصة لتدريب فرق العمل.</p>
-                        <button onClick={() => onNavigate('about')} className="w-full py-3 border-2 border-[#4F8751] text-[#4F8751] font-bold rounded-xl hover:bg-[#4F8751] hover:text-white transition-colors mb-8">
+                        <button onClick={() => onNavigate('about')} className="w-full py-3 border-2 border-[#4F8751] text-[#4F8751] font-bold rounded-xl hover:bg-[#4F8751] hover:text-white transition-colors duration-200 cursor-pointer mb-8">
                             تواصل معنا
                         </button>
                         <ul className="space-y-4">
@@ -77,7 +75,6 @@ const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                     </div>
                 </div>
             </div>
-        </div>
     );
 };
 

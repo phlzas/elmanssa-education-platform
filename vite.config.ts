@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       proxy: {
         '/api/v1': {
-          target: 'https://elmanasa-edu.runasp.net',
+          target: 'http://localhost:5299',
           changeOrigin: true,
           secure: false
         }
@@ -29,6 +29,36 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+      }
+    },
+    build: {
+      // hls.js is ~162kB gzipped and only loads on /watch — suppress the warning
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            // Plyr — only loaded on /watch
+            if (id.includes('node_modules/plyr')) {
+              return 'vendor-plyr';
+            }
+            // hls.js — only loaded on /watch via SecureVideoPlayer (dynamic import)
+            if (id.includes('node_modules/hls.js')) {
+              return 'vendor-hls';
+            }
+            // React ecosystem (react, react-dom, scheduler)
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) {
+              return 'vendor-react';
+            }
+            // Everything else in node_modules → shared vendor chunk
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          }
+        }
       }
     }
   };

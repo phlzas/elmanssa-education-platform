@@ -9,7 +9,7 @@ interface AboutPageProps {
 
 const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
     return (
-        <div className="bg-white min-h-screen">
+        <div dir="rtl" className="bg-white min-h-screen font-cairo">
             {/* Hero Section */}
             <div className="relative py-20 md:py-32 overflow-hidden bg-gradient-to-br from-[#034289] to-[#022a5c] text-white">
                 <div className="absolute inset-0 dots-pattern opacity-10" />
@@ -43,8 +43,8 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                         <div className="absolute inset-0 bg-gradient-to-tr from-[#034289] to-[#4F8751] rounded-3xl transform rotate-3 opacity-20" />
                         <img
                             src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                            alt="Team working"
-                            className="relative rounded-3xl shadow-2xl transform -rotate-3 hover:rotate-0 transition-transform duration-500"
+                            alt="فريق العمل يتعاون معاً في بيئة تعليمية"
+                            className="relative rounded-3xl shadow-2xl transform -rotate-3 hover:rotate-0 transition-transform duration-300"
                         />
                     </div>
                 </div>
@@ -60,12 +60,38 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {[
-                            { title: 'الجودة أولاً', desc: 'نهتم بأدق التفاصيل لتقديم تجربة تعليمية لا تضاهى.', icon: '⭐' },
-                            { title: 'الابتكار المستمر', desc: 'نسعى دائماً لتطوير أدواتنا وطرق التدريس.', icon: '🚀' },
-                            { title: 'المجتمع', desc: 'نحن أكثر من منصة، نحن مجتمع يدعم بعضه البعض.', icon: '🤝' },
+                            {
+                                title: 'الجودة أولاً',
+                                desc: 'نهتم بأدق التفاصيل لتقديم تجربة تعليمية لا تضاهى.',
+                                icon: (
+                                    <svg className="w-8 h-8 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                ),
+                            },
+                            {
+                                title: 'الابتكار المستمر',
+                                desc: 'نسعى دائماً لتطوير أدواتنا وطرق التدريس.',
+                                icon: (
+                                    <svg className="w-8 h-8 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                ),
+                            },
+                            {
+                                title: 'المجتمع',
+                                desc: 'نحن أكثر من منصة، نحن مجتمع يدعم بعضه البعض.',
+                                icon: (
+                                    <svg className="w-8 h-8 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                                    </svg>
+                                ),
+                            },
                         ].map((value, idx) => (
                             <div key={idx} className="bg-white p-8 rounded-2xl shadow-sm border border-[#D2E1D9]/50 hover:shadow-lg transition-all duration-300 text-center">
-                                <div className="text-4xl mb-4">{value.icon}</div>
+                                <div className="w-16 h-16 bg-[#4F8751]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    {value.icon}
+                                </div>
                                 <h3 className="text-xl font-bold text-[#034289] mb-3">{value.title}</h3>
                                 <p className="text-[#034289]/70">{value.desc}</p>
                             </div>
@@ -82,7 +108,9 @@ const AboutPage: React.FC<AboutPageProps> = ({ onNavigate }) => {
                         <p className="text-white/80 mb-8 max-w-2xl mx-auto">
                             هل لديك استفسار أو اقتراح؟ نحن هنا للاستماع إليك ومساعدتك في رحلتك التعليمية.
                         </p>
-                        <button className="px-8 py-3 bg-white text-[#034289] font-bold rounded-xl hover:bg-[#D2E1D9] transition-colors flex items-center gap-2 mx-auto">
+                        <button
+                            onClick={() => onNavigate('contact')}
+                            className="px-8 py-3 bg-white text-[#034289] font-bold rounded-xl hover:bg-[#D2E1D9] transition-colors duration-200 flex items-center gap-2 mx-auto cursor-pointer">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>

@@ -2,14 +2,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Page } from '../App';
 import { fetchCourseById, fetchSubjectById } from '../services/api';
 import { validateSession } from '../api/auth.api';
+import { getProgress } from '../api/student.api';
 import { useAuth } from '../contexts/AuthContext';
 import {
     Lecture, Subject,
     useScreenProtection, Watermark, RecordingBlocker,
-    PlyrYouTube, getVideoType, extractYouTubeId, getDriveEmbedUrl,
+    PlyrYouTube, PlyrVideo, getVideoType, extractYouTubeId, getDriveFileId,
 } from './videoViewerUtils';
+import MediaGallery from './MediaGallery';
+import SecureVideoPlayer from './SecureVideoPlayer';
 
 const FONT = "'Cairo', sans-serif";
+
+// Format duration from either "mm:ss" string or raw seconds number
+const formatDuration = (d: any): string => {
+    if (!d) return '00:00';
+    if (typeof d === 'string' && d.includes(':')) return d;
+    const s = Number(d) || 0;
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+};
 
 interface VideoViewerProps {
     onNavigate: (page: Page, payload?: { courseId?: number | string }) => void;
@@ -48,20 +61,62 @@ const EmptyScreen: React.FC<{ hasSubjects: boolean; onBack: () => void }> = ({ h
     </div>
 );
 
-// ── Video area ────────────────────────────────────────────────────────────────
-const VideoArea: React.FC<{ lecture: Lecture; watermarkLabel: string; sessionId: string; isRecording: boolean }> = ({ lecture, watermarkLabel, sessionId, isRecording }) => {
-    const vtype = lecture.videoUrl ? getVideoType(lecture.videoUrl) : null;
+// ── Drive video player (Google Drive /preview embed) ─────────────────────────
+const DriveVideo: React.FC<{ lecture: Lecture }> = ({ lecture }) => {
+    const driveId = getDriveFileId(lecture.videoUrl!);
+    const viewUrl = driveId ? `https://drive.google.com/file/d/${driveId}/view` : null;
+
+    if (!driveId) {
+        return (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', background: 'radial-gradient(ellipse at center, #111827 0%, #0a0f1e 100%)' }}>
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M10 8l6 4-6 4V8z" /></svg>
+                <span style={{ color: '#94a3b8', fontSize: '14px', fontFamily: FONT }}>تعذّر تشغيل الفيديو</span>
+                {viewUrl && (
+                    <a href={viewUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ padding: '9px 22px', borderRadius: '8px', background: 'linear-gradient(135deg,#0ea5e9,#2563eb)', color: '#fff', textDecoration: 'none', fontSize: '13px', fontWeight: 600, fontFamily: FONT }}>
+                        فتح في Google Drive
+                    </a>
+                )}
+            </div>
+        );
+    }
+
+    const embedUrl = `https://drive.google.com/file/d/${driveId}/preview`;
+
     return (
-        <div style={{ flex: 1, background: '#000', position: 'relative', minHeight: 0 }} onContextMenu={e => e.preventDefault()}>
+        <iframe
+            key={lecture.id}
+            src={embedUrl}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            allow="autoplay; fullscreen"
+            title={lecture.title}
+        />
+    );
+};
+
+// ── Video area ────────────────────────────────────────────────────────────────
+const VideoArea: React.FC<{ lecture: Lecture; watermarkLabel: string; sessionId: string; isRecording: boolean; userEmail?: string }> = ({ lecture, watermarkLabel, sessionId, isRecording, userEmail }) => {
+    const vtype = lecture.videoUrl ? getVideoType(lecture.videoUrl) : null;
+    const hasUploadedMedia = !!lecture.mediaFileId;
+
+    return (
+        <div style={{ flex: 1, background: '#000', position: 'relative', minHeight: 0, overflow: 'hidden' }} onContextMenu={e => e.preventDefault()}>
             <Watermark label={watermarkLabel} sessionId={sessionId} />
             {isRecording && <RecordingBlocker />}
-            {lecture.videoUrl && vtype === 'youtube' ? (() => {
+
+            {hasUploadedMedia ? (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    <SecureVideoPlayer lectureId={lecture.id} mediaFileId={lecture.mediaFileId!} userEmail={userEmail} userName={watermarkLabel} />
+                </div>
+            ) : lecture.videoUrl && vtype === 'youtube' ? (() => {
                 const ytId = extractYouTubeId(lecture.videoUrl!);
                 return ytId
                     ? <PlyrYouTube key={lecture.id} videoId={ytId} />
                     : <CenteredMsg>رابط يوتيوب غير صالح</CenteredMsg>;
-            })() : lecture.videoUrl ? (
-                <iframe key={lecture.id} src={getDriveEmbedUrl(lecture.videoUrl)} style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} allowFullScreen allow="autoplay; fullscreen" title={lecture.title} />
+            })() : lecture.videoUrl && vtype === 'drive' ? (
+                <DriveVideo lecture={lecture} />
+            ) : lecture.videoUrl ? (
+                <PlyrVideo src={lecture.videoUrl} />
             ) : (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', background: 'radial-gradient(ellipse at center, #111827 0%, #0a0f1e 100%)' }}>
                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M10 8l6 4-6 4V8z" /></svg>
@@ -96,7 +151,7 @@ const LectureItem: React.FC<{ lec: Lecture; active: boolean; onClick: () => void
             <span style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid #1e293b', flexShrink: 0, display: 'block' }} />
         )}
         <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', color: active ? '#38bdf8' : '#94a3b8', fontWeight: active ? 600 : 400 }}>{lec.title}</span>
-        {lec.duration && lec.duration !== '10:00' && (
+        {lec.duration && lec.duration !== '00:00' && (
             <span style={{ fontSize: '11px', color: active ? '#38bdf8' : '#334155', flexShrink: 0 }}>{lec.duration}</span>
         )}
     </button>
@@ -147,12 +202,37 @@ const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, cour
                         lectures: (section.lectures || []).map((lec: any, lIdx: number) => ({
                             id: String(lec.id ?? `lec-${idx}-${lIdx}`),
                             title: typeof lec === 'string' ? lec : lec.title,
-                            duration: lec.duration || '10:00',
+                            duration: formatDuration(lec.duration),
                             videoUrl: lec.videoUrl || '',
+                            mediaFileId: lec.mediaFileId || undefined,
                             completed: false,
                         })),
                     }));
                     setSubjects(mapped);
+
+                    // Fetch progress for students and mark completed lectures
+                    if (user?.role === 'student') {
+                        try {
+                            const progressData = await getProgress();
+                            const completedIds = new Set<string>();
+                            const progressMap = new Map<string, number>();
+                            if (progressData?.subjects) {
+                                for (const subj of progressData.subjects) {
+                                    for (const lec of subj.lectures || []) {
+                                        if (lec.completed) completedIds.add(lec.lectureId);
+                                        progressMap.set(lec.lectureId, lec.progressPct || 0);
+                                    }
+                                }
+                            }
+                            for (const subj of mapped) {
+                                for (const lec of subj.lectures) {
+                                    lec.completed = completedIds.has(lec.id);
+                                }
+                            }
+                            setSubjects([...mapped]);
+                        } catch { /* progress fetch is non-critical */ }
+                    }
+
                     if (mapped.length > 0 && mapped[0].lectures.length > 0) {
                         setCurrentSubject(mapped[0]);
                         setCurrentLecture(mapped[0].lectures[0]);
@@ -228,7 +308,7 @@ const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, cour
 
                 {/* ── Video column ── */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                    <VideoArea lecture={currentLecture} watermarkLabel={watermarkLabel} sessionId={sessionId} isRecording={isRecording} />
+                    <VideoArea lecture={currentLecture} watermarkLabel={watermarkLabel} sessionId={sessionId} isRecording={isRecording} userEmail={user?.email} />
 
                     {/* ── Info bar ── */}
                     <div style={{ background: '#0d1424', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '14px 20px', flexShrink: 0 }}>
@@ -267,6 +347,13 @@ const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, cour
                                     style={{ width: '100%', minHeight: '72px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px', color: '#e2e8f0', fontSize: '13px', fontFamily: FONT, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
                         )}
+
+                        {/* ── Documents / materials for this lecture ── */}
+                        {currentLecture.mediaFileId && (
+                            <div style={{ marginTop: '12px' }}>
+                                <MediaGallery lectureId={currentLecture.id} lectureTitle={undefined} docsOnly />
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -275,11 +362,19 @@ const VideoViewer: React.FC<VideoViewerProps> = ({ onNavigate, lectureData, cour
                     <aside style={{ width: '300px', background: '#0d1424', borderRight: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
                         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <div style={{ fontSize: '13px', fontWeight: 700, color: '#e2e8f0' }}>{currentSubject.name}</div>
-                            <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>{currentSubject.instructor} · {currentSubject.lectureCount}</div>
+                            <div style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>{currentSubject.instructor} · {subjects.reduce((t, s) => t + s.lectures.length, 0)} محاضرات</div>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-                            {currentSubject.lectures.map(lec => (
-                                <LectureItem key={lec.id} lec={lec} active={lec.id === currentLecture.id} onClick={() => selectLecture(lec, currentSubject)} />
+                            {subjects.map(subject => (
+                                <div key={subject.id}>
+                                    {/* Level header */}
+                                    <div style={{ padding: '8px 10px 4px', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {subject.name}
+                                    </div>
+                                    {subject.lectures.map(lec => (
+                                        <LectureItem key={lec.id} lec={lec} active={lec.id === currentLecture.id} onClick={() => selectLecture(lec, subject)} />
+                                    ))}
+                                </div>
                             ))}
                         </div>
                     </aside>

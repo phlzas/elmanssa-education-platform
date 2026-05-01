@@ -1,21 +1,51 @@
 import { apiRequest } from "./client";
-import { Course, Lecture, CurriculumSection } from "../types";
+import { Course, Lecture, CurriculumSection } from "../types/types";
+import { sanitizeSearchQuery, validateNumericId, validateGuid } from "../utils/validation";
 
 // ─── Raw API calls ───────────────────────────────────────────
 
 export function getCourses(params?: { category?: string; level?: string; search?: string; page?: number; per_page?: number }) {
     const qs = new URLSearchParams();
-    if (params?.category) qs.append("category", params.category);
-    if (params?.level) qs.append("level", params.level);
-    if (params?.search) qs.append("search", params.search);
-    if (params?.page) qs.append("page", String(params.page));
-    if (params?.per_page) qs.append("per_page", String(params.per_page));
+    if (params?.category) {
+        // Sanitize category - only allow alphanumeric and common separators
+        const sanitizedCategory = params.category.replace(/[^\u0600-\u06FFa-zA-Z0-9\s\-_]/g, '').trim();
+        if (sanitizedCategory) qs.append("category", sanitizedCategory);
+    }
+    if (params?.level) {
+        // Sanitize level
+        const sanitizedLevel = params.level.replace(/[^\u0600-\u06FFa-zA-Z0-9\s\-_]/g, '').trim();
+        if (sanitizedLevel) qs.append("level", sanitizedLevel);
+    }
+    if (params?.search) {
+        // Sanitize search query
+        const sanitizedSearch = sanitizeSearchQuery(params.search);
+        if (sanitizedSearch) qs.append("search", sanitizedSearch);
+    }
+    if (params?.page) {
+        const pageNum = Math.max(1, Math.floor(Number(params.page)) || 1);
+        qs.append("page", String(pageNum));
+    }
+    if (params?.per_page) {
+        const perPage = Math.min(100, Math.max(1, Math.floor(Number(params.per_page)) || 20));
+        qs.append("per_page", String(perPage));
+    }
     const query = qs.toString();
     return apiRequest(`/subjects${query ? `?${query}` : ""}`);
 }
 
 export function getCourse(id: number | string) {
-    return apiRequest(`/subjects/${id}`);
+    // Validate ID before making request
+    if (typeof id === 'number') {
+        if (!validateNumericId(id)) {
+            throw new Error('معرف المادة غير صالح');
+        }
+    } else if (typeof id === 'string') {
+        // Allow numeric strings and valid GUIDs
+        if (!validateGuid(id) && !/^\d+$/.test(id.trim())) {
+            throw new Error('معرف المادة غير صالح');
+        }
+    }
+    return apiRequest(`/subjects/${encodeURIComponent(String(id))}`);
 }
 
 export function getPopularCourses() {
@@ -39,7 +69,17 @@ export function createCourse(data: {
 }
 
 export function getReviews(courseId: number | string) {
-    return apiRequest(`/subjects/${courseId}/reviews`);
+    // Validate courseId
+    if (typeof courseId === 'number') {
+        if (!validateNumericId(courseId)) {
+            throw new Error('معرف المادة غير صالح');
+        }
+    } else if (typeof courseId === 'string') {
+        if (!validateGuid(courseId) && !/^\d+$/.test(courseId.trim())) {
+            throw new Error('معرف المادة غير صالح');
+        }
+    }
+    return apiRequest(`/subjects/${encodeURIComponent(String(courseId))}/reviews`);
 }
 
 export function createReview(courseId: number | string, data: { rating: number; comment?: string }) {
@@ -58,7 +98,7 @@ function mapCourseItem(item: any): Course {
         title: item.title ?? '',
         category: item.category ?? 'عام',
         description: item.description ?? '',
-        instructorName: item.instructorName ?? undefined,
+        instructorName: item.instructorName ?? item.teacherName ?? item.teacher?.name ?? undefined,
         instructorId: typeof item.instructorId === 'number' ? item.instructorId : undefined,
         rating: typeof item.rating === 'number' ? item.rating : 4.5,
         duration: typeof item.duration === 'number' ? item.duration : undefined,
@@ -74,8 +114,24 @@ function mapCourseItem(item: any): Course {
 }
 
 function mapCourseDetail(item: any): Course {
-    const curriculum: CurriculumSection[] | undefined = Array.isArray(item.curriculumSections)
-        ? item.curriculumSections.map((s: any) => ({
+    // Backend returns levels[].lectures[] for subjects (GUID id)
+    // and curriculumSections[].lectures[] for old courses
+    let curriculum: CurriculumSection[] | undefined;
+
+    if (Array.isArray(item.levels) && item.levels.length > 0) {
+        curriculum = item.levels.map((level: any) => ({
+            section: level.title ?? level.name ?? '',
+            lectures: Array.isArray(level.lectures)
+                ? level.lectures.map((l: any): Lecture => ({
+                    id: Number(l.id),
+                    title: l.title ?? '',
+                    durationSeconds: typeof l.duration === 'number' ? l.duration : undefined,
+                    videoUrl: l.videoUrl || undefined,
+                }))
+                : []
+        }));
+    } else if (Array.isArray(item.curriculumSections)) {
+        curriculum = item.curriculumSections.map((s: any) => ({
             section: s.title ?? '',
             lectures: Array.isArray(s.lectures)
                 ? s.lectures.map((l: any): Lecture => ({
@@ -85,11 +141,17 @@ function mapCourseDetail(item: any): Course {
                     videoUrl: l.videoUrl || undefined,
                 }))
                 : []
-        }))
-        : undefined;
+        }));
+    }
+
+    // Compute total lecture count from curriculum if not provided
+    const lecturesCount = typeof item.lecturesCount === 'number'
+        ? item.lecturesCount
+        : curriculum?.reduce((sum, s) => sum + s.lectures.length, 0);
 
     return {
         ...mapCourseItem(item),
+        lecturesCount,
         curriculum,
     };
 }

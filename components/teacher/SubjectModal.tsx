@@ -1,7 +1,8 @@
-
-import React from 'react';
-import { Subject, Level, Lecture } from './types';
-import { subjectIcons } from './mockData';
+﻿
+import React, { useRef, useEffect } from 'react';
+import { Subject, Level, Lecture, LectureDoc, categoryIcons } from './types';
+import { uploadMediaFile, uploadDocumentFile, waitForHlsReady } from '../../api/media.api';
+import SelectField from '../SelectField';
 
 interface SubjectModalProps {
     show: boolean;
@@ -29,10 +30,26 @@ interface SubjectModalProps {
     updateLevelName: (id: string, name: string) => void;
     addLecture: (levelId: string) => void;
     removeLecture: (levelId: string, lecId: string) => void;
-    updateLecture: (levelId: string, lecId: string, field: keyof Lecture, value: string) => void;
+    updateLecture: (levelId: string, lecId: string, field: keyof Lecture, value: any) => void;
     onSave: () => void;
     isSaving?: boolean;
+    /**
+     * Called when an upload that was still in-flight at save time completes in the background.
+     * subjectId is the ID of the subject that was just saved/created.
+     */
+    onBackgroundUploadComplete?: (
+        subjectId: string,
+        levelId: string,
+        lecId: string,
+        mediaFileId: string,
+        fileType: 'video' | 'document',
+        fileName: string,
+    ) => void;
+    /** The subject ID assigned after a successful save — used to route background completions */
+    savedSubjectId?: string;
 }
+
+const CATEGORIES = ['عام', 'رياضيات', 'علوم', 'لغة عربية', 'لغة إنجليزية', 'فيزياء', 'كيمياء', 'أحياء', 'تاريخ', 'جغرافيا', 'برمجة', 'ذكاء اصطناعي', 'فنون', 'تربية دينية'];
 
 const SubjectModal: React.FC<SubjectModalProps> = ({
     show, onClose, editingSubject, createStep, setCreateStep,
@@ -42,12 +59,124 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
     newSubjectImageUrl, setNewSubjectImageUrl, newLevels,
     addLevel, removeLevel, updateLevelName,
     addLecture, removeLecture, updateLecture, onSave, isSaving = false,
+    onBackgroundUploadComplete, savedSubjectId,
 }) => {
+    const videoInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+    const docInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+    // Keep a ref to the latest savedSubjectId so upload callbacks can read it
+    // even after the modal closes (closures would capture stale value otherwise)
+    const savedSubjectIdRef = useRef<string | undefined>(savedSubjectId);
+    useEffect(() => { savedSubjectIdRef.current = savedSubjectId; }, [savedSubjectId]);
+
+    useEffect(() => {
+        if (categoryIcons[newSubjectCategory]) {
+            setNewSubjectIcon(categoryIcons[newSubjectCategory]);
+        }
+    }, [newSubjectCategory, setNewSubjectIcon]);
+
     if (!show) return null;
+
+    const handleVideoUpload = async (levelId: string, lecId: string, file: File) => {
+        console.log(`[VideoUpload] START — file="${file.name}" size=${file.size} levelId=${levelId} lecId=${lecId}`);
+        updateLecture(levelId, lecId, 'uploadStatus' as keyof Lecture, 'uploading');
+        updateLecture(levelId, lecId, 'uploadProgress' as keyof Lecture, 0);
+        updateLecture(levelId, lecId, 'videoFileName' as keyof Lecture, file.name);
+        updateLecture(levelId, lecId, 'hlsReady' as keyof Lecture, false);
+        updateLecture(levelId, lecId, 'uploadProcessing' as keyof Lecture, false);
+        try {
+            const mediaFile = await uploadMediaFile(file, undefined, (pct) => {
+                console.log(`[VideoUpload] progress=${pct}%`);
+                updateLecture(levelId, lecId, 'uploadProgress' as keyof Lecture, pct);
+                if (pct === 100) {
+                    updateLecture(levelId, lecId, 'uploadProcessing' as keyof Lecture, true);
+                }
+            });
+            console.log(`[VideoUpload] SUCCESS — mediaFileId=${mediaFile.id}`, mediaFile);
+            updateLecture(levelId, lecId, 'uploadProcessing' as keyof Lecture, false);
+            updateLecture(levelId, lecId, 'mediaFileId' as keyof Lecture, mediaFile.id);
+            updateLecture(levelId, lecId, 'title' as keyof Lecture, file.name.replace(/\.[^/.]+$/, ''));
+            updateLecture(levelId, lecId, 'uploadStatus' as keyof Lecture, 'success');
+            updateLecture(levelId, lecId, 'uploadProgress' as keyof Lecture, 100);
+            if (mediaFile.hlsReady) {
+                updateLecture(levelId, lecId, 'hlsReady' as keyof Lecture, true);
+            } else {
+                waitForHlsReady(mediaFile.id, () => {
+                    console.log(`[HLS] Ready — mediaFileId=${mediaFile.id}`);
+                    updateLecture(levelId, lecId, 'hlsReady' as keyof Lecture, true);
+                });
+            }
+            // If the modal was already closed (save happened while uploading),
+            // notify the dashboard so it can patch the subject and persist to backend
+            const subjectId = savedSubjectIdRef.current;
+            if (subjectId && onBackgroundUploadComplete) {
+                onBackgroundUploadComplete(subjectId, levelId, lecId, mediaFile.id, 'video', file.name);
+            }
+        } catch (err: any) {
+            console.error('[VideoUpload] FAILED:', err);
+            updateLecture(levelId, lecId, 'uploadProcessing' as keyof Lecture, false);
+            updateLecture(levelId, lecId, 'uploadStatus' as keyof Lecture, 'error');
+            updateLecture(levelId, lecId, 'uploadError' as keyof Lecture, err.message || 'فشل رفع الملف');
+        }
+    };
+
+    const handleDocUpload = async (levelId: string, lecId: string, file: File) => {
+        const docId = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        console.log(`[DocUpload] START — file="${file.name}" docId=${docId}`);
+
+        const newDoc: LectureDoc = { id: docId, fileName: file.name, uploadStatus: 'uploading', uploadProgress: 0 };
+
+        updateLecture(levelId, lecId, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) => [...(prev || []), newDoc]);
+
+        try {
+            const mediaFile = await uploadDocumentFile(file, undefined, (pct) => {
+                updateLecture(levelId, lecId, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) =>
+                    (prev || []).map(d => d.id === docId ? { ...d, uploadProgress: pct } : d)
+                );
+            });
+            console.log(`[DocUpload] SUCCESS — mediaFileId=${mediaFile.id} docId=${docId}`);
+            updateLecture(levelId, lecId, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) =>
+                (prev || []).map(d => d.id === docId ? { ...d, uploadStatus: 'success', uploadProgress: 100, mediaFileId: mediaFile.id } : d)
+            );
+            updateLecture(levelId, lecId, 'documentFileId' as keyof Lecture, mediaFile.id);
+            // Notify dashboard if save already happened
+            const subjectId = savedSubjectIdRef.current;
+            if (subjectId && onBackgroundUploadComplete) {
+                onBackgroundUploadComplete(subjectId, levelId, lecId, mediaFile.id, 'document', file.name);
+            }
+        } catch (err: any) {
+            console.error('[DocUpload] FAILED:', err);
+            updateLecture(levelId, lecId, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) =>
+                (prev || []).map(d => d.id === docId ? { ...d, uploadStatus: 'error', uploadError: err.message || 'فشل رفع الملف' } : d)
+            );
+        }
+    };
+
+    const handleVideoInputChange = (levelId: string, lecId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleVideoUpload(levelId, lecId, file);
+        e.target.value = '';
+    };
+
+    const handleDocInputChange = (levelId: string, lecId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        // Fire all doc uploads in parallel — don't wait for each one before starting the next
+        files.forEach(file => handleDocUpload(levelId, lecId, file));
+        e.target.value = ''; // reset so same file can be re-added
+    };
 
     const totalSteps = 3;
     const stepTitles = ['معلومات المادة', 'إضافة المستويات', 'إضافة المحاضرات'];
     const FILTER_LEVELS = ['مبتدئ', 'متوسط', 'متقدم', 'خبير', 'جميع المستويات'];
+
+    // Count files still actively transferring bytes (not yet at server-processing stage).
+    // Files at 100% with uploadProcessing=true are already sent — don't show them as blocking.
+    const uploadingCount = newLevels.reduce((total, l) =>
+        total + l.lectures.reduce((sum, lec) => {
+            const videoUploading = (lec.uploadStatus === 'uploading' && !lec.uploadProcessing) ? 1 : 0;
+            const docsUploading = (lec.docs || []).filter(d => d.uploadStatus === 'uploading').length;
+            return sum + videoUploading + docsUploading;
+        }, 0)
+    , 0);
 
     return (
         <div style={{
@@ -115,21 +244,20 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                     {createStep === 1 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
-                                <label htmlFor="subject-icon" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
-                                    أيقونة المادة
+                                <label style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
+                                    أيقونة المادة (تُختار تلقائياً حسب التصنيف)
                                 </label>
-                                <div id="subject-icon" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {subjectIcons.map(icon => (
-                                        <button key={icon} onClick={() => setNewSubjectIcon(icon)} aria-label={`اختر أيقونة ${icon}`} style={{
-                                            width: '44px', height: '44px', borderRadius: '12px',
-                                            background: newSubjectIcon === icon ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.05)',
-                                            border: newSubjectIcon === icon ? '2px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)',
-                                            fontSize: '22px', cursor: 'pointer', display: 'flex',
-                                            alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
-                                        }}>
-                                            {icon}
-                                        </button>
-                                    ))}
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '12px',
+                                    padding: '12px 16px',
+                                    background: 'rgba(245,158,11,0.08)',
+                                    border: '1px solid rgba(245,158,11,0.2)',
+                                    borderRadius: '12px',
+                                }}>
+                                    <span style={{ fontSize: '32px' }}>{newSubjectIcon}</span>
+                                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                                        سيتم تحديد الأيقونة تلقائياً عند اختيار التصنيف
+                                    </span>
                                 </div>
                             </div>
                             <div>
@@ -177,53 +305,31 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                 <label htmlFor="subject-level" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
                                     مستوى الصعوبة *
                                 </label>
-                                <select
+                                <SelectField
                                     id="subject-level"
                                     name="subjectLevel"
                                     value={newSubjectLevel}
                                     onChange={e => setNewSubjectLevel(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '12px 16px',
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px', color: '#e2e8f0', fontSize: '15px',
-                                        fontFamily: "'Cairo', sans-serif", outline: 'none',
-                                        cursor: 'pointer',
-                                    }}
-                                    onFocus={e => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)'}
-                                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
                                 >
                                     {FILTER_LEVELS.map(level => (
-                                        <option key={level} value={level} style={{ background: '#0d1f3c', color: '#e2e8f0' }}>
-                                            {level}
-                                        </option>
+                                        <option key={level} value={level}>{level}</option>
                                     ))}
-                                </select>
+                                </SelectField>
                             </div>
                             <div>
                                 <label htmlFor="subject-category" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
                                     التصنيف *
                                 </label>
-                                <select
+                                <SelectField
                                     id="subject-category"
                                     name="subjectCategory"
                                     value={newSubjectCategory}
                                     onChange={e => setNewSubjectCategory(e.target.value)}
-                                    style={{
-                                        width: '100%', padding: '12px 16px',
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px', color: '#e2e8f0', fontSize: '15px',
-                                        fontFamily: "'Cairo', sans-serif", outline: 'none',
-                                        cursor: 'pointer',
-                                    }}
-                                    onFocus={e => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)'}
-                                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
                                 >
                                     {['عام', 'رياضيات', 'علوم', 'لغة عربية', 'لغة إنجليزية', 'فيزياء', 'كيمياء', 'أحياء', 'تاريخ', 'جغرافيا', 'برمجة', 'فنون', 'تربية دينية'].map(cat => (
-                                        <option key={cat} value={cat} style={{ background: '#0d1f3c', color: '#e2e8f0' }}>
-                                            {cat}
-                                        </option>
+                                        <option key={cat} value={cat}>{cat}</option>
                                     ))}
-                                </select>
+                                </SelectField>
                             </div>
                             <div>
                                 <label htmlFor="subject-image" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
@@ -258,36 +364,64 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                             </div>
                             <div>
                                 <label htmlFor="subject-price" style={{ fontSize: '13px', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', display: 'block' }}>
-                                    السعر (ريال سعودي) *
+                                    السعر *
                                 </label>
-                                <input
-                                    id="subject-price"
-                                    name="subjectPrice"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={newSubjectPrice}
-                                    onChange={e => setNewSubjectPrice(parseFloat(e.target.value) || 0)}
-                                    placeholder="0.00"
-                                    style={{
-                                        width: '100%', padding: '12px 16px',
-                                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: '12px', color: '#e2e8f0', fontSize: '15px',
-                                        fontFamily: "'Cairo', sans-serif", outline: 'none',
-                                    }}
-                                    onFocus={e => e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)'}
-                                    onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
-                                />
-                                <div style={{ 
-                                    fontSize: '11px', 
-                                    color: '#64748b', 
-                                    marginTop: '6px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}>
-                                    💡 اترك السعر 0 لجعل المادة مجانية
+                                <div style={{
+                                    display: 'flex', alignItems: 'stretch',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '12px', overflow: 'hidden',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    transition: 'border-color 0.2s',
+                                }}
+                                    onFocusCapture={e => (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(245,158,11,0.4)'}
+                                    onBlurCapture={e => (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.1)'}
+                                >
+                                    <input
+                                        id="subject-price"
+                                        name="subjectPrice"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={newSubjectPrice}
+                                        onChange={e => setNewSubjectPrice(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                        style={{
+                                            flex: 1, padding: '12px 16px',
+                                            background: 'transparent',
+                                            border: 'none', outline: 'none',
+                                            color: '#e2e8f0', fontSize: '15px',
+                                            fontFamily: "'Cairo', sans-serif",
+                                            minWidth: 0,
+                                        }}
+                                    />
+                                    {/* Currency badge */}
+                                    <div style={{
+                                        padding: '0 14px',
+                                        background: 'rgba(245,158,11,0.12)',
+                                        borderLeft: '1px solid rgba(245,158,11,0.2)',
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        color: '#f59e0b', fontSize: '13px', fontWeight: 700,
+                                        whiteSpace: 'nowrap', flexShrink: 0,
+                                    }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M15 8.5a4 4 0 00-6 3.5c0 2 1.5 3 3 3.5s3 1.5 3 3.5a4 4 0 01-6 3.5" strokeLinecap="round" />
+                                            <path d="M12 6v2M12 16v2" strokeLinecap="round" />
+                                        </svg>
+                                        ر.س
+                                    </div>
                                 </div>
+                                {newSubjectPrice === 0 && (
+                                    <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                                        مجاني
+                                    </div>
+                                )}
+                                {newSubjectPrice > 0 && (
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                                        اترك السعر 0 لجعل المادة مجانية
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -329,7 +463,7 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                         id={`level-name-${level.id}`}
                                         name={`levelName-${idx}`}
                                         aria-label={`اسم المستوى ${idx + 1}`}
-                                        value={level.name}
+                                        value={level.title}
                                         onChange={e => updateLevelName(level.id, e.target.value)}
                                         style={{
                                             flex: 1, padding: '8px 12px',
@@ -376,7 +510,7 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                             fontSize: '13px', fontWeight: 700, color: '#f59e0b',
                                             background: 'rgba(245, 158, 11, 0.1)', padding: '4px 12px',
                                             borderRadius: '8px',
-                                        }}>⚡ {level.name}</span>
+                                        }}>⚡ {level.title}</span>
                                         <button onClick={() => addLecture(level.id)} style={{
                                             background: 'rgba(245, 158, 11, 0.1)',
                                             border: '1px solid rgba(245, 158, 11, 0.2)',
@@ -431,29 +565,333 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                                         </button>
                                                     </div>
                                                     <div style={{ paddingRight: '34px' }}>
+                                                        {/* ── VIDEO UPLOAD AREA ── */}
+                                                        {(!lec.uploadStatus || lec.uploadStatus === 'idle') && (
+                                                            <button
+                                                                onClick={() => videoInputRefs.current[`${level.id}-${lec.id}`]?.click()}
+                                                                style={{
+                                                                    width: '100%', padding: '28px 12px',
+                                                                    background: 'rgba(15,23,42,0.6)',
+                                                                    border: '2px dashed rgba(56,189,248,0.25)',
+                                                                    borderRadius: '10px', color: '#38bdf8',
+                                                                    fontSize: '13px', cursor: 'pointer',
+                                                                    display: 'flex', flexDirection: 'column',
+                                                                    alignItems: 'center', gap: '8px',
+                                                                    marginBottom: '8px',
+                                                                }}
+                                                            >
+                                                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                                    <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeLinecap="round" strokeLinejoin="round" />
+                                                                </svg>
+                                                                اسحب الملفات هنا أو اضغط للرفع
+                                                                <span style={{ fontSize: '11px', color: '#475569' }}>MP4، PDF، Links (Max 5GB)</span>
+                                                            </button>
+                                                        )}
+                                                        {/* UPLOADING — dark video area + green progress */}
+                                                        {lec.uploadStatus === 'uploading' && (
+                                                            <div style={{ marginBottom: '8px' }}>
+                                                                <div style={{
+                                                                    width: '100%', height: '110px',
+                                                                    background: 'rgba(10,18,35,0.85)',
+                                                                    borderRadius: '10px 10px 0 0',
+                                                                    display: 'flex', flexDirection: 'column',
+                                                                    alignItems: 'center', justifyContent: 'center',
+                                                                    gap: '8px',
+                                                                    border: '1px solid rgba(56,189,248,0.12)',
+                                                                    borderBottom: 'none',
+                                                                }}>
+                                                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" style={{ opacity: 0.6 }}>
+                                                                        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeLinecap="round" strokeLinejoin="round" />
+                                                                    </svg>
+                                                                    <span style={{ fontSize: '11px', color: '#475569' }}>
+                                                                        {(lec as any).uploadProcessing ? 'جاري معالجة الملف على الخادم...' : 'جاري الرفع...'}
+                                                                    </span>
+                                                                </div>
+                                                                <div style={{
+                                                                    background: 'rgba(10,18,35,0.7)',
+                                                                    border: '1px solid rgba(56,189,248,0.12)',
+                                                                    borderTop: 'none', borderRadius: '0 0 10px 10px',
+                                                                    padding: '10px 12px',
+                                                                }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                                        <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 700 }}>
+                                                                            {(lec as any).uploadProcessing ? '✓ 100%' : `${lec.uploadProgress || 0}%`}
+                                                                        </span>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                            <span style={{ fontSize: '12px', color: '#94a3b8', direction: 'ltr' }}>{lec.videoFileName || 'video.mp4'}</span>
+                                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+                                                                                <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" strokeLinecap="round" />
+                                                                            </svg>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                                        <div style={{
+                                                                            width: `${lec.uploadProgress || 0}%`,
+                                                                            height: '100%',
+                                                                            background: (lec as any).uploadProcessing
+                                                                                ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
+                                                                                : 'linear-gradient(90deg, #22c55e, #16a34a)',
+                                                                            borderRadius: '2px',
+                                                                            transition: 'width 0.3s ease',
+                                                                        }} />
+                                                                    </div>
+                                                                    {(lec as any).uploadProcessing && (
+                                                                        <div style={{ fontSize: '10px', color: '#fbbf24', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                                                style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                                                                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" />
+                                                                            </svg>
+                                                                            تم إرسال الملف، في انتظار تأكيد الخادم...
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* SUCCESS — video done tile */}
+                                                        {lec.uploadStatus === 'success' && (
+                                                            <div style={{
+                                                                background: 'rgba(10,18,35,0.7)',
+                                                                border: `1px solid ${lec.hlsReady ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.2)'}`,
+                                                                borderRadius: '10px', padding: '10px 12px',
+                                                                display: 'flex', flexDirection: 'column', gap: '6px',
+                                                                marginBottom: '8px',
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
+                                                                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                                                                        </svg>
+                                                                        <span style={{ fontSize: '12px', color: '#22c55e' }}>تم الرفع</span>
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                        <span style={{ fontSize: '12px', color: '#94a3b8', direction: 'ltr' }}>{lec.videoFileName || lec.title}</span>
+                                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+                                                                            <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" strokeLinecap="round" />
+                                                                        </svg>
+                                                                        <button onClick={() => videoInputRefs.current[`${level.id}-${lec.id}`]?.click()} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '6px', padding: '3px 8px', color: '#94a3b8', fontSize: '11px', cursor: 'pointer' }}>تغيير</button>
+                                                                    </div>
+                                                                </div>
+                                                                {/* HLS processing indicator */}
+                                                                {!lec.hlsReady && (
+                                                                    <div style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                                                        fontSize: '11px', color: '#fbbf24',
+                                                                        background: 'rgba(251,191,36,0.08)',
+                                                                        borderRadius: '6px', padding: '4px 8px',
+                                                                    }}>
+                                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                                            style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                                                                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" />
+                                                                        </svg>
+                                                                        جاري معالجة الفيديو للبث... (يمكنك المتابعة)
+                                                                    </div>
+                                                                )}
+                                                                {lec.hlsReady && (
+                                                                    <div style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                                                        fontSize: '11px', color: '#22c55e',
+                                                                        background: 'rgba(34,197,94,0.08)',
+                                                                        borderRadius: '6px', padding: '4px 8px',
+                                                                    }}>
+                                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                                                                        </svg>
+                                                                        جاهز للبث
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* ERROR — video */}
+                                                        {lec.uploadStatus === 'error' && (
+                                                            <div style={{
+                                                                padding: '10px 12px',
+                                                                background: 'rgba(239,68,68,0.1)',
+                                                                border: '1px solid rgba(239,68,68,0.3)',
+                                                                borderRadius: '8px',
+                                                                display: 'flex', alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                color: '#f87171', fontSize: '12px',
+                                                                marginBottom: '8px',
+                                                            }}>
+                                                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                        <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+                                                                    </svg>
+                                                                    {lec.uploadError || 'فشل رفع الملف'}
+                                                                </span>
+                                                                <button onClick={() => videoInputRefs.current[`${level.id}-${lec.id}`]?.click()} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: '6px', padding: '4px 10px', color: '#f87171', fontSize: '11px', cursor: 'pointer' }}>إعادة المحاولة</button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Hidden video file input */}
+                                                        <input
+                                                            key={`video-${lec.id}`}
+                                                            ref={el => { videoInputRefs.current[`${level.id}-${lec.id}`] = el; }}
+                                                            type="file"
+                                                            accept="video/*"
+                                                            onChange={(e) => handleVideoInputChange(level.id, lec.id, e)}
+                                                            style={{ display: 'none' }}
+                                                        />
+
+                                                        {/* ── DOCUMENT SECTION ── */}
+                                                        <div style={{ marginTop: '10px' }}>
+                                                            <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', textAlign: 'right' }}>الملفات المرفوعة</p>
+
+                                                            {/* Render each doc in the list */}
+                                                            {(lec.docs || []).map((doc) => (
+                                                                <div key={doc.id} style={{ marginBottom: '6px' }}>
+                                                                    {doc.uploadStatus === 'uploading' ? (
+                                                                        /* ── uploading tile ── */
+                                                                        <div style={{
+                                                                            background: 'rgba(15,23,42,0.85)',
+                                                                            border: '1px solid rgba(251,191,36,0.25)',
+                                                                            borderRadius: '10px',
+                                                                            padding: '10px 12px',
+                                                                            overflow: 'hidden',
+                                                                        }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                                                <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 700 }}>{doc.uploadProgress}%</span>
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                                                                    <span style={{
+                                                                                        fontSize: '12px', color: '#e2e8f0',
+                                                                                        direction: 'ltr', overflow: 'hidden',
+                                                                                        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                                                        maxWidth: '180px',
+                                                                                    }}>{doc.fileName}</span>
+                                                                                    <div style={{
+                                                                                        width: '30px', height: '30px', borderRadius: '7px',
+                                                                                        background: 'rgba(251,191,36,0.15)',
+                                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                                                                    }}>
+                                                                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2">
+                                                                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" strokeLinecap="round" />
+                                                                                        </svg>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            {/* Progress bar */}
+                                                                            <div style={{ height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                                                                                <div style={{
+                                                                                    width: `${doc.uploadProgress}%`,
+                                                                                    height: '100%',
+                                                                                    background: 'linear-gradient(90deg, #fbbf24, #f59e0b)',
+                                                                                    borderRadius: '2px',
+                                                                                    transition: 'width 0.25s ease',
+                                                                                }} />
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : doc.uploadStatus === 'success' ? (
+                                                                        /* ── success tile ── */
+                                                                        <div style={{
+                                                                            background: 'rgba(15,23,42,0.6)',
+                                                                            border: '1px solid rgba(255,255,255,0.07)',
+                                                                            borderRadius: '10px', padding: '9px 12px',
+                                                                            display: 'flex', alignItems: 'center',
+                                                                            justifyContent: 'space-between',
+                                                                        }}>
+                                                                            <button
+                                                                                onClick={() => updateLecture(level.id, lec.id, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) => (prev || []).filter(d => d.id !== doc.id))}
+                                                                                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: '2px', flexShrink: 0 }}
+                                                                                title="حذف"
+                                                                            >
+                                                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                                                                <div>
+                                                                                    <div style={{
+                                                                                        fontSize: '12px', color: '#e2e8f0',
+                                                                                        direction: 'ltr', overflow: 'hidden',
+                                                                                        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                                                        maxWidth: '180px', textAlign: 'right',
+                                                                                    }}>{doc.fileName}</div>
+                                                                                    <div style={{ fontSize: '10px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
+                                                                                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                                                                                        مكتمل
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div style={{
+                                                                                    width: '30px', height: '30px', borderRadius: '7px',
+                                                                                    background: 'rgba(251,191,36,0.12)',
+                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                                                                }}>
+                                                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2">
+                                                                                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" strokeLinecap="round" />
+                                                                                    </svg>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        /* ── error tile ── */
+                                                                        <div style={{
+                                                                            background: 'rgba(239,68,68,0.08)',
+                                                                            border: '1px solid rgba(239,68,68,0.25)',
+                                                                            borderRadius: '8px', padding: '8px 12px',
+                                                                            display: 'flex', alignItems: 'center',
+                                                                            justifyContent: 'space-between',
+                                                                            color: '#f87171', fontSize: '11px',
+                                                                        }}>
+                                                                            <button
+                                                                                onClick={() => updateLecture(level.id, lec.id, 'docs' as keyof Lecture, (prev: LectureDoc[] | undefined) => (prev || []).filter(d => d.id !== doc.id))}
+                                                                                style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: '2px' }}
+                                                                            >
+                                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <span style={{ direction: 'ltr', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+                                                                                {doc.uploadError || 'فشل الرفع'} — {doc.fileName}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+
+                                                            {/* Add files button — always visible */}
+                                                            <button
+                                                                onClick={() => docInputRefs.current[`${level.id}-${lec.id}`]?.click()}
+                                                                style={{
+                                                                    width: '100%', padding: '8px 12px',
+                                                                    background: 'rgba(251,191,36,0.06)',
+                                                                    border: '1px dashed rgba(251,191,36,0.22)',
+                                                                    borderRadius: '8px', color: '#fbbf24',
+                                                                    fontSize: '11px', cursor: 'pointer',
+                                                                    display: 'flex', alignItems: 'center',
+                                                                    justifyContent: 'center', gap: '6px',
+                                                                    marginTop: (lec.docs || []).length > 0 ? '6px' : '0',
+                                                                }}
+                                                            >
+                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                                    <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+                                                                </svg>
+                                                                إضافة ملفات (PDF, Word, PPT...)
+                                                            </button>
+
+                                                            <input
+                                                                key={`doc-${lec.id}`}
+                                                                ref={el => { docInputRefs.current[`${level.id}-${lec.id}`] = el; }}
+                                                                type="file"
+                                                                multiple
+                                                                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                                                                onChange={(e) => handleDocInputChange(level.id, lec.id, e)}
+                                                                style={{ display: 'none' }}
+                                                            />
+                                                        </div>
+
+                                                        {/* YouTube/Drive URL */}
                                                         <input
                                                             id={`lec-video-${lec.id}`}
                                                             name={`lecVideo-${lec.id}`}
                                                             aria-label="رابط الفيديو"
                                                             value={lec.videoUrl}
                                                             onChange={e => updateLecture(level.id, lec.id, 'videoUrl', e.target.value)}
-                                                            placeholder="🔗 رابط Google Drive (سيتم حساب المدة تلقائياً)"
-                                                            style={{
-                                                                width: '100%', padding: '8px 12px',
-                                                                background: 'rgba(255,255,255,0.03)',
-                                                                border: '1px solid rgba(255,255,255,0.05)',
-                                                                borderRadius: '8px', color: '#64748b', fontSize: '12px',
-                                                                fontFamily: "'Cairo', sans-serif", outline: 'none',
-                                                            }}
+                                                            placeholder="أو أدخل رابط YouTube/Drive"
+                                                            style={{ width: '100%', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', color: '#64748b', fontSize: '12px', fontFamily: "'Cairo', sans-serif", outline: 'none', marginTop: '8px' }}
                                                         />
-                                                        <div style={{ 
-                                                            fontSize: '10px', 
-                                                            color: '#64748b', 
-                                                            marginTop: '4px',
-                                                            fontStyle: 'italic'
-                                                        }}>
-                                                            💡 المدة الزمنية سيتم استخراجها تلقائياً من رابط الفيديو
-                                                        </div>
+                                                        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
                                                     </div>
                                                 </div>
                                             ))
@@ -503,36 +941,58 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                             </svg>
                         </button>
                     ) : (
-                        <button onClick={onSave} disabled={isSaving} style={{
-                            background: isSaving
-                                ? 'rgba(16, 185, 129, 0.5)'
-                                : 'linear-gradient(135deg, #10b981, #059669)',
-                            border: 'none', borderRadius: '12px', padding: '10px 24px',
-                            color: '#fff', fontSize: '14px', fontWeight: 700,
-                            cursor: isSaving ? 'not-allowed' : 'pointer',
-                            fontFamily: "'Cairo', sans-serif",
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            boxShadow: isSaving ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
-                            opacity: isSaving ? 0.7 : 1,
-                        }}>
-                            {isSaving ? (
-                                <>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                        style={{ animation: 'spin 0.8s linear infinite' }}>
-                                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
-                                            strokeLinecap="round" strokeLinejoin="round" />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                            {uploadingCount > 0 && (
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    fontSize: '11px', color: '#fbbf24',
+                                    background: 'rgba(251,191,36,0.1)',
+                                    border: '1px solid rgba(251,191,36,0.2)',
+                                    borderRadius: '8px', padding: '5px 10px',
+                                }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                        style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
+                                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" />
                                     </svg>
-                                    جاري الحفظ...
-                                </>
-                            ) : (
-                                <>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    {editingSubject ? 'حفظ التعديلات' : 'حفظ المادة'}
-                                </>
+                                    جاري رفع {uploadingCount} {uploadingCount === 1 ? 'ملف' : 'ملفات'} — يمكنك الحفظ الآن وسيكتمل الرفع تلقائياً
+                                </div>
                             )}
-                        </button>
+                            <button
+                                onClick={onSave}
+                                disabled={isSaving}
+
+                                style={{
+                                    background: isSaving
+                                        ? 'rgba(16, 185, 129, 0.4)'
+                                        : 'linear-gradient(135deg, #10b981, #059669)',
+                                    border: 'none', borderRadius: '12px', padding: '10px 24px',
+                                    color: '#fff', fontSize: '14px', fontWeight: 700,
+                                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                                    fontFamily: "'Cairo', sans-serif",
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    boxShadow: isSaving ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.3)',
+                                    opacity: isSaving ? 0.6 : 1,
+                                    transition: 'all 0.2s',
+                                }}>
+                                {isSaving ? (
+                                    <>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                            style={{ animation: 'spin 0.8s linear infinite' }}>
+                                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                                                strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        جاري الحفظ...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        {editingSubject ? 'حفظ التعديلات' : 'حفظ المادة'}
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>

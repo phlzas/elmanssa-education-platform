@@ -8,6 +8,7 @@ export interface Lecture {
     title: string;
     duration: string;
     videoUrl?: string;
+    mediaFileId?: string;  // set when uploaded via media system
     completed: boolean;
 }
 
@@ -26,6 +27,8 @@ export const extractDriveId = (url: string): string | null => {
         /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]{10,})(?:\/|$)/,
         /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]{10,})/,
         /drive\.google\.com\/uc\?(?:[^&]*&)*id=([a-zA-Z0-9_-]{10,})/,
+        // Legacy DrivePlyr URLs: sh20raj.github.io/DrivePlyr/plyr.html?id=FILEID
+        /[?&]id=([a-zA-Z0-9_-]{10,})(?:&|$)/,
     ];
     for (const re of patterns) { const m = url.match(re); if (m) return m[1]; }
     if (/^[a-zA-Z0-9_-]{33}$/.test(url.trim())) return url.trim();
@@ -44,15 +47,19 @@ export const extractYouTubeId = (url: string): string | null => {
 
 export const getVideoType = (url: string): 'youtube' | 'drive' | 'other' => {
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
-    if (url.includes('drive.google.com') || url.includes('sh20raj.github.io/DrivePlyr') || /^[a-zA-Z0-9_-]{33}$/.test(url.trim())) return 'drive';
+    if (url.includes('drive.google.com') || /^[a-zA-Z0-9_-]{33}$/.test(url.trim())) return 'drive';
+    // Legacy DrivePlyr URLs contain a ?id= param with a Drive file ID
+    if (url.includes('plyr.html') || (url.includes('?id=') && extractDriveId(url) !== null)) return 'drive';
     return 'other';
 };
 
 export const getDriveEmbedUrl = (url: string): string => {
-    if (url.includes('sh20raj.github.io/DrivePlyr')) return url;
     const fileId = extractDriveId(url);
-    return fileId ? `https://sh20raj.github.io/DrivePlyr/plyr.html?id=${fileId}` : url;
+    // Use Google Drive direct streaming URL — works as <video src> without iframe CSP issues
+    return fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
 };
+
+export const getDriveFileId = (url: string): string | null => extractDriveId(url);
 
 // ── Screen protection hook ────────────────────────────────────────────────────
 export const useScreenProtection = () => {
@@ -154,23 +161,137 @@ export const RecordingBlocker: React.FC = () => (
     </div>
 );
 
+// ── Shared Plyr config & theme ────────────────────────────────────────────────
+const PLYR_CONTROLS = [
+    'play-large', 'play', 'progress', 'current-time',
+    'mute', 'volume', 'captions', 'settings', 'pip', 'fullscreen',
+];
+
+const PLYR_THEME_CSS = `
+  :root {
+    --plyr-color-main: #38bdf8;
+    --plyr-video-background: #0a0f1e;
+    --plyr-video-controls-background: linear-gradient(rgba(10,15,30,0), rgba(10,15,30,0.92));
+    --plyr-control-radius: 6px;
+    --plyr-font-family: 'Cairo', sans-serif;
+    --plyr-range-fill-background: #38bdf8;
+    --plyr-video-range-thumb-active-shadow-color: rgba(56,189,248,0.4);
+    --plyr-badge-background: #1e293b;
+    --plyr-menu-background: #0d1424;
+    --plyr-menu-color: #cbd5e1;
+    --plyr-menu-border-color: rgba(255,255,255,0.08);
+    --plyr-tooltip-background: #0d1424;
+    --plyr-tooltip-color: #e2e8f0;
+  }
+  .plyr--video .plyr__control:hover,
+  .plyr--video .plyr__control[aria-expanded=true] {
+    background: rgba(56,189,248,0.18);
+  }
+  .plyr__menu__container {
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  /* Hide YouTube end-screen recommendations, title bar, and share button */
+  .plyr__video-wrapper iframe {
+    pointer-events: none;
+  }
+  .plyr--playing .plyr__video-wrapper iframe,
+  .plyr--paused .plyr__video-wrapper iframe {
+    pointer-events: auto;
+  }
+  /* Fullscreen: wrapper fills viewport, Plyr fills wrapper */
+  #plyr-yt-wrapper:-webkit-full-screen,
+  #plyr-video-wrapper:-webkit-full-screen { width: 100vw; height: 100vh; }
+  #plyr-yt-wrapper:-moz-full-screen,
+  #plyr-video-wrapper:-moz-full-screen { width: 100vw; height: 100vh; }
+  #plyr-yt-wrapper:fullscreen,
+  #plyr-video-wrapper:fullscreen { width: 100vw; height: 100vh; }
+  #plyr-yt-wrapper:fullscreen .plyr,
+  #plyr-video-wrapper:fullscreen .plyr { width: 100%; height: 100%; }
+`;
+
 // ── Plyr YouTube player ───────────────────────────────────────────────────────
 export const PlyrYouTube: React.FC<{ videoId: string }> = ({ videoId }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const plyrRef = useRef<InstanceType<typeof Plyr> | null>(null);
     useEffect(() => {
-        if (!containerRef.current) return;
-        if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; }
-        plyrRef.current = new Plyr(containerRef.current, {
-            youtube: { noCookie: false, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 },
-            disableContextMenu: true,
-        });
-        return () => { if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; } };
+        const timer = setTimeout(() => {
+            if (!containerRef.current) return;
+            if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; }
+            plyrRef.current = new Plyr(containerRef.current, {
+                controls: PLYR_CONTROLS,
+                youtube: {
+                    noCookie: true,
+                    rel: 0,
+                    showinfo: 0,
+                    iv_load_policy: 3,
+                    modestbranding: 1,
+                    fs: 0,
+                    disablekb: 1,
+                    cc_load_policy: 0,
+                    playsinline: 1,
+                },
+                disableContextMenu: true,
+                fullscreen: { enabled: true, fallback: true, iosNative: false, container: '#plyr-yt-wrapper' },
+            });
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+            if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; }
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [videoId]);
     return (
-        <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }} onContextMenu={e => e.preventDefault()}>
+        <div id="plyr-yt-wrapper" style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }} onContextMenu={e => e.preventDefault()}>
+            <style>{PLYR_THEME_CSS}</style>
             <div ref={containerRef} data-plyr-provider="youtube" data-plyr-embed-id={videoId} style={{ width: '100%', height: '100%' }} />
+            {/* Blocks YouTube end-screen recommendations and clickable title */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: '48px', zIndex: 10, pointerEvents: 'none' }} />
+        </div>
+    );
+};
+
+// ── Plyr HTML5 video player (Drive / direct URL) ──────────────────────────────
+export const PlyrVideo: React.FC<{ src: string; onError?: () => void }> = ({ src, onError }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const plyrRef = useRef<InstanceType<typeof Plyr> | null>(null);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!videoRef.current) return;
+            if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; }
+            plyrRef.current = new Plyr(videoRef.current, {
+                controls: PLYR_CONTROLS,
+                disableContextMenu: true,
+                resetOnEnd: false,
+                keyboard: { focused: true, global: false },
+                fullscreen: { enabled: true, fallback: true, iosNative: false, container: '#plyr-video-wrapper' },
+            });
+            if (onError) {
+                plyrRef.current.on('error', onError);
+            }
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+            if (plyrRef.current) { try { plyrRef.current.destroy(); } catch (_) {} plyrRef.current = null; }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [src]);
+
+    return (
+        <div id="plyr-video-wrapper" style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }} onContextMenu={e => e.preventDefault()}>
+            <style>{PLYR_THEME_CSS}</style>
+            <video
+                ref={videoRef}
+                key={src}
+                controlsList="nodownload noremoteplayback"
+                disablePictureInPicture
+                onContextMenu={e => e.preventDefault()}
+                onError={onError}
+                style={{ width: '100%', height: '100%' }}
+                playsInline
+            >
+                <source src={src} onError={onError} />
+            </video>
         </div>
     );
 };

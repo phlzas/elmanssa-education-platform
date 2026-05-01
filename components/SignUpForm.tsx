@@ -1,12 +1,12 @@
-
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Page, AccountType } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { validateEmail, validatePhoneNumber, validateNationalId, sanitizePlainText, ERROR_MESSAGES } from '../utils/validation';
 
 interface SignUpFormProps {
   initialAccountType?: AccountType;
-  onNavigate: (page: Page) => void;
+  onNavigate: (page: Page, params?: Record<string, string>) => void;
 }
 
 const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student', onNavigate }) => {
@@ -16,13 +16,13 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [nationalId, setNationalId] = useState('');
+  const [nationalId] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [yearsOfExperience, setYearsOfExperience] = useState<string>('');
   const [specialization, setSpecialization] = useState('');
   const [bio, setBio] = useState('');
-  const [cvUrl, setCvUrl] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [cvUrl] = useState('');
+  const [avatarUrl] = useState('');
 
   const { signup, signupTeacher, user, isLoggedIn } = useAuth();
   const { showToast } = useToast();
@@ -33,7 +33,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
 
   useEffect(() => {
     if (user && isLoggedIn) {
-      showToast(`مرحباً بك ${user.name}! تم إنشاء حسابك بنجاح`, 'success');
+      showToast(`مرحبا بك ${user.name}! تم إنشاء حسابك بنجاح`, 'success');
     }
   }, [user, isLoggedIn, showToast]);
 
@@ -53,54 +53,87 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !password) {
+
+    // Validate required fields
+    if (!fullName.trim() || !email.trim() || !password || !phoneNumber.trim()) {
       setError('يرجى ملء جميع الحقول');
       return;
     }
+
+    // Sanitize and validate full name
+    const sanitizedName = sanitizePlainText(fullName, 100);
+    if (sanitizedName.length < 2) {
+      setError('الاسم يجب أن يكون حرفين على الأقل');
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      setError(ERROR_MESSAGES.invalidEmail);
+      return;
+    }
+
+    // Validate password
     if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
-      setError('كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، وتشمل حرفاً كبيراً وحرفاً صغيراً ورقماً');
+      setError('كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل وتشمل حرفا كبيرا وحرفا صغيرا ورقما');
       return;
     }
-    if (accountType === 'student' && (!phoneNumber || !nationalId)) {
-      setError('يرجى إدخال رقم الهاتف والرقم القومي');
+
+    // Validate phone number
+    if (!validatePhoneNumber(phoneNumber)) {
+      setError(ERROR_MESSAGES.invalidPhone);
       return;
     }
+
+    // Sanitize phone number (remove non-digits)
+    const sanitizedPhone = phoneNumber.replace(/\D/g, '');
+
+    // Validate nationalId if provided
+    let sanitizedNationalId = nationalId;
+    if (nationalId && nationalId.trim()) {
+      if (!validateNationalId(nationalId)) {
+        setError(ERROR_MESSAGES.invalidNationalId);
+        return;
+      }
+      sanitizedNationalId = nationalId.replace(/\D/g, '');
+    }
+
+    // Sanitize optional fields for teachers
+    let sanitizedSpecialization = specialization;
+    let sanitizedBio = bio;
+    if (accountType === 'teacher') {
+      sanitizedSpecialization = specialization ? sanitizePlainText(specialization, 100) : '';
+      sanitizedBio = bio ? sanitizePlainText(bio, 2000) : '';
+
+      const years = Number(yearsOfExperience || '0');
+      if (yearsOfExperience && (isNaN(years) || years < 0 || years > 100)) {
+        setError('عدد سنوات الخبرة يجب أن يكون بين 0 و 100');
+        return;
+      }
+    }
+
     setError('');
     setIsLoading(true);
     try {
       if (accountType === 'teacher') {
         const years = Number(yearsOfExperience || '0');
-        if (!nationalId || !phoneNumber || isNaN(years)) {
-          throw new Error('يرجى إدخال الرقم القومي ورقم الهاتف والخبرة بالشهور/السنوات');
-        }
-        if (!specialization) {
-          throw new Error('يرجى إدخال التخصص');
-        }
-        if (!bio) {
-          throw new Error('يرجى كتابة نبذة مختصرة عنك');
-        }
-        if (!cvUrl) {
-          throw new Error('يرجى إدخال رابط السيرة الذاتية');
-        }
-        if (years < 0 || years > 100) {
-          throw new Error('عدد سنوات الخبرة يجب أن يكون بين 0 و 100');
-        }
         await signupTeacher({
-          name: fullName,
-          email,
+          name: sanitizedName,
+          email: email.trim().toLowerCase(),
           password,
-          nationalId,
-          phoneNumber,
+          nationalId: sanitizedNationalId,
+          phoneNumber: sanitizedPhone,
           yearsOfExperience: years,
-          specialization,
-          bio,
+          specialization: sanitizedSpecialization,
+          bio: sanitizedBio,
           cvUrl,
           avatarUrl
         });
       } else {
-        await signup(fullName, email, password, accountType, phoneNumber, nationalId);
+        await signup(sanitizedName, email.trim().toLowerCase(), password, accountType, sanitizedPhone, sanitizedNationalId);
       }
-      // App.tsx auto-redirects via useEffect on auth state change
+      showToast('تم إنشاء الحساب! يرجى التحقق من بريدك الإلكتروني', 'success');
+      onNavigate('verify-email', { email: email.trim().toLowerCase() });
     } catch (err: any) {
       setError(err?.message || 'حدث خطأ أثناء إنشاء الحساب');
     } finally {
@@ -108,294 +141,169 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
     }
   };
 
+  const inputClass =
+    'w-full px-4 py-3.5 bg-[#e7e8e9] rounded-lg text-[#191c1d] placeholder:text-[#737782] ' +
+    'focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#034289]/30 ' +
+    'transition-all duration-200 text-right';
+
+  const labelClass = 'block text-xs font-semibold text-[#434751] mb-1.5 text-right';
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 md:py-20 px-4 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#034289]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-[#4F8751]/10 rounded-full blur-3xl" />
-        <div className="absolute inset-0 dots-pattern opacity-20" />
+    <div dir="rtl" className="min-h-[80vh] flex items-center justify-center py-12 md:py-20 px-4 bg-[#f3f4f5] relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#034289]/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-[#4F8751]/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-lg animate-fade-in-up">
-        {/* Card */}
-        <div className="card-premium glass bg-white/90 p-8 md:p-10 rounded-3xl border border-[#D2E1D9]/50 shadow-2xl">
-          {/* Header */}
+      <div className="relative w-full max-w-lg">
+        <div className="bg-white rounded-2xl shadow-[0_8px_24px_rgba(3,66,137,0.08)] p-8 md:p-10">
+
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#034289] to-[#0459b7] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            <div className="w-14 h-14 bg-gradient-to-br from-[#034289] to-[#002c61] rounded-xl flex items-center justify-center mx-auto mb-5 shadow-md">
+              <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="22" y1="11" x2="16" y2="11" />
               </svg>
             </div>
-            <h2 className="text-3xl font-black text-[#034289] mb-2">إنشاء حساب جديد</h2>
-            <p className="text-[#034289]/60">انضم إلى مجتمعنا التعليمي اليوم</p>
+            <h1 className="text-2xl font-black text-[#002c61] mb-1">إنشاء حساب جديد</h1>
+            <p className="text-sm text-[#434751]">انضم إلى مجتمعنا التعليمي اليوم</p>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium animate-fade-in">
+            <div role="alert" className="mb-5 p-4 bg-[#ffdad6] rounded-lg text-[#93000a] text-sm font-medium">
               {error.split('\n').map((line, i) => (
                 <div key={i} className="flex items-start gap-2 mb-1 last:mb-0">
-                  <span className="text-red-400 mt-0.5">⚠️</span>
+                  <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
                   <span>{line}</span>
                 </div>
               ))}
             </div>
           )}
 
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            {/* Account Type Selector */}
+          <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+
             <div>
-              <label className="block text-sm font-bold text-[#034289] mb-3">نوع الحساب</label>
-              <div className="grid grid-cols-2 gap-3">
+              <span className="block text-xs font-semibold text-[#434751] mb-2 text-right">نوع الحساب</span>
+              <div className="flex rounded-lg bg-[#e7e8e9] p-1 gap-1">
                 <button
                   type="button"
                   onClick={() => setAccountType('student')}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${accountType === 'student'
-                    ? 'border-[#4F8751] bg-[#4F8751]/5'
-                    : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
-                    }`}
+                  aria-pressed={accountType === 'student'}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-bold transition-colors duration-200 cursor-pointer ${accountType === 'student' ? 'bg-[#034289] text-white shadow-sm' : 'text-[#434751] hover:bg-[#d9dadb]'}`}
                 >
-                  <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${accountType === 'student' ? 'bg-[#4F8751]' : 'bg-[#D2E1D9]'
-                    }`}>
-                    <svg className={`w-6 h-6 ${accountType === 'student' ? 'text-white' : 'text-[#034289]/60'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                    </svg>
-                  </div>
-                  <span className={`font-bold block ${accountType === 'student' ? 'text-[#4F8751]' : 'text-[#034289]'}`}>
-                    طالب
-                  </span>
-                  <span className="text-xs text-[#034289]/50">تعلم مهارات جديدة</span>
-                  {accountType === 'student' && (
-                    <div className="absolute top-2 left-2 w-5 h-5 bg-[#4F8751] rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                  </svg>
+                  طالب
                 </button>
                 <button
                   type="button"
                   onClick={() => setAccountType('teacher')}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-300 ${accountType === 'teacher'
-                    ? 'border-[#4F8751] bg-[#4F8751]/5'
-                    : 'border-[#D2E1D9] bg-white hover:border-[#4F8751]/50'
-                    }`}
+                  aria-pressed={accountType === 'teacher'}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-bold transition-colors duration-200 cursor-pointer ${accountType === 'teacher' ? 'bg-[#034289] text-white shadow-sm' : 'text-[#434751] hover:bg-[#d9dadb]'}`}
                 >
-                  <div className={`w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center transition-colors ${accountType === 'teacher' ? 'bg-[#4F8751]' : 'bg-[#D2E1D9]'
-                    }`}>
-                    <svg className={`w-6 h-6 ${accountType === 'teacher' ? 'text-white' : 'text-[#034289]/60'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <span className={`font-bold block ${accountType === 'teacher' ? 'text-[#4F8751]' : 'text-[#034289]'}`}>
-                    مدرس
-                  </span>
-                  <span className="text-xs text-[#034289]/50">شارك معرفتك</span>
-                  {accountType === 'teacher' && (
-                    <div className="absolute top-2 left-2 w-5 h-5 bg-[#4F8751] rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                  </svg>
+                  مدرس
                 </button>
               </div>
             </div>
 
-            {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block text-sm font-bold text-[#034289] mb-2">
-                الاسم الكامل
-              </label>
+              <label htmlFor="fullName" className={labelClass}>الاسم الكامل</label>
               <div className="relative">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737782] pointer-events-none" aria-hidden="true">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
-                <input
-                  type="text"
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="أدخل اسمك الكامل"
-                  className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                />
+                <input type="text" id="fullName" name="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="أدخل اسمك الكامل" autoComplete="name" className={`${inputClass} pl-10`} />
               </div>
             </div>
 
-            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-bold text-[#034289] mb-2">
-                البريد الإلكتروني
-              </label>
+              <label htmlFor="email" className={labelClass}>البريد الإلكتروني</label>
               <div className="relative">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737782] pointer-events-none" aria-hidden="true">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
                   </svg>
                 </div>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@email.com"
-                  className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                />
+                <input type="email" id="email" name="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="example@email.com" autoComplete="email" dir="ltr" className={`${inputClass} pl-10 text-left`} />
               </div>
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-bold text-[#034289] mb-2">
-                كلمة المرور
-              </label>
+              <label htmlFor="password" className={labelClass}>كلمة المرور</label>
               <div className="relative">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#034289]/40">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737782] pointer-events-none" aria-hidden="true">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </div>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pr-12 pl-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                />
+                <input type="password" id="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="" autoComplete="new-password" className={`${inputClass} pl-10`} />
               </div>
-              {/* Password strength indicator */}
-              <div className="flex gap-1 mt-2">
+              <div className="flex gap-1 mt-2" aria-hidden="true">
                 {[1, 2, 3, 4].map((level) => (
-                  <div
-                    key={level}
-                    className={`h-1 flex-1 rounded transition-all duration-300 ${strength >= level ? strengthColors[strength] : 'bg-[#D2E1D9]'
-                      }`}
-                  />
+                  <div key={level} className={`h-1 flex-1 rounded transition-all duration-300 ${strength >= level ? strengthColors[strength] : 'bg-[#e1e3e4]'}`} />
                 ))}
               </div>
               {password.length > 0 && (
-                <p className="text-xs text-[#034289]/50 mt-1">كلمة مرور {strengthLabels[strength]} — يجب أن تحتوي على حرف كبير وحرف صغير ورقم</p>
+                <p className="text-xs text-[#737782] mt-1 text-right">
+                  كلمة مرور {strengthLabels[strength]}  يجب أن تحتوي على حرف كبير وحرف صغير ورقم
+                </p>
               )}
             </div>
 
-            {/* Required Fields for Students */}
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-[#034289] mb-2">
-                  الرقم القومي {accountType === 'student' && <span className="text-red-500">*</span>}
-                  {accountType === 'teacher' && <span className="text-[#034289]/50 font-normal">(اختياري)</span>}
-                </label>
-                <input
-                  type="text"
-                  value={nationalId}
-                  onChange={(e) => setNationalId(e.target.value)}
-                  placeholder="أدخل رقمك القومي"
-                  className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-[#034289] mb-2">
-                  رقم الهاتف {accountType === 'student' && <span className="text-red-500">*</span>}
-                  {accountType === 'teacher' && <span className="text-[#034289]/50 font-normal">(اختياري)</span>}
-                </label>
-                <input
-                  type="text"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="01xxxxxxxxx"
-                  className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                />
-              </div>
+            <div>
+                <label htmlFor="phoneNumber" className={labelClass}>رقم الهاتف</label>
+                <input type="tel" id="phoneNumber" name="phoneNumber" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="أدخل رقم هاتفك" autoComplete="tel" dir="ltr" className={`${inputClass} text-left`} />
             </div>
 
             {accountType === 'teacher' && (
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">سنوات الخبرة</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={yearsOfExperience}
-                    onChange={(e) => setYearsOfExperience(e.target.value)}
-                    placeholder="عدد السنوات (0-100)"
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
+                  <label htmlFor="yearsOfExperience" className={labelClass}>سنوات الخبرة <span className="text-[#737782] font-normal">(اختياري)</span></label>
+                  <input type="number" id="yearsOfExperience" name="yearsOfExperience" min={0} max={100} value={yearsOfExperience} onChange={(e) => setYearsOfExperience(e.target.value)} placeholder="عدد السنوات (0-100)" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">التخصص</label>
-                  <input
-                    type="text"
-                    value={specialization}
-                    onChange={(e) => setSpecialization(e.target.value)}
-                    placeholder="مثال: برمجة، رياضيات"
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
+                  <label htmlFor="specialization" className={labelClass}>التخصص <span className="text-[#737782] font-normal">(اختياري)</span></label>
+                  <input type="text" id="specialization" name="specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="مثال: برمجة رياضيات" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">نبذة</label>
-                  <textarea
-                    rows={3}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="نبذة مختصرة عنك"
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">رابط السيرة الذاتية</label>
-                  <input
-                    type="url"
-                    value={cvUrl}
-                    onChange={(e) => setCvUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#034289] mb-2">رابط الصورة الشخصية</label>
-                  <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-4 py-3.5 bg-white border-2 border-[#D2E1D9] rounded-xl text-[#034289] placeholder:text-[#034289]/40 focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/10 transition-all duration-300"
-                  />
+                  <label htmlFor="bio" className={labelClass}>نبذة <span className="text-[#737782] font-normal">(اختياري)</span></label>
+                  <textarea id="bio" name="bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="نبذة مختصرة عنك" className={`${inputClass} resize-none`} />
                 </div>
               </div>
             )}
 
-            {/* Terms */}
             <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="terms"
-                className="w-5 h-5 rounded border-2 border-[#D2E1D9] text-[#4F8751] focus:ring-[#4F8751] focus:ring-offset-0 mt-0.5"
-              />
-              <label htmlFor="terms" className="text-[#034289]/70 text-sm leading-relaxed">
-                بإنشاء حساب، أوافق على{' '}
-                <a href="#" className="text-[#4F8751] hover:underline">شروط الخدمة</a>
+              <input type="checkbox" id="terms" className="w-4 h-4 mt-0.5 rounded border-[#c3c6d2] text-[#4F8751] focus:ring-[#4F8751] focus:ring-offset-0 cursor-pointer shrink-0" />
+              <label htmlFor="terms" className="text-[#434751] text-sm leading-relaxed cursor-pointer">
+                بإنشاء حساب أوافق على{' '}
+                <a href="#" className="text-[#4F8751] hover:underline transition-colors duration-200 cursor-pointer">شروط الخدمة</a>
                 {' '}و{' '}
-                <a href="#" className="text-[#4F8751] hover:underline">سياسة الخصوصية</a>
+                <a href="#" className="text-[#4F8751] hover:underline transition-colors duration-200 cursor-pointer">سياسة الخصوصية</a>
               </label>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary py-4 text-lg font-bold text-white rounded-xl shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">
+            <button type="submit" disabled={isLoading} className="w-full py-3.5 text-base font-bold text-white rounded-lg bg-gradient-to-l from-[#034289] to-[#002c61] hover:shadow-[0_8px_24px_rgba(3,66,137,0.25)] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all duration-200">
+              <span className="flex items-center justify-center gap-2">
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
@@ -408,14 +316,10 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
             </button>
           </form>
 
-          {/* Login Link */}
-          <div className="text-center mt-8">
-            <p className="text-[#034289]/70">
-              لديك حساب بالفعل؟{' '}
-              <button
-                onClick={() => onNavigate('login')}
-                className="font-bold text-[#4F8751] hover:underline"
-              >
+          <div className="text-center mt-7">
+            <p className="text-[#434751] text-sm">
+              لديك حساب بالفعل{' '}
+              <button type="button" onClick={() => onNavigate('login')} className="font-bold text-[#4F8751] hover:underline transition-colors duration-200 cursor-pointer">
                 تسجيل الدخول
               </button>
             </p>

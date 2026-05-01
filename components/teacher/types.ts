@@ -1,20 +1,42 @@
 
+export interface LectureDoc {
+    id: string;           // local temp id for tracking
+    fileName: string;
+    mediaFileId?: string;
+    uploadStatus: 'uploading' | 'success' | 'error';
+    uploadProgress: number;
+    uploadError?: string;
+}
+
 export interface Lecture {
     id: string;
     title: string;
     duration: string;
     videoUrl: string;
+    mediaFileId?: string;
+    uploadProgress?: number;
+    uploadStatus?: 'idle' | 'uploading' | 'success' | 'error';
+    /** True while bytes are fully sent but server hasn't responded yet */
+    uploadProcessing?: boolean;
+    uploadError?: string;
+    videoFileName?: string;
+    /** True once background HLS transcoding is complete for this lecture's video */
+    hlsReady?: boolean;
+    // Multiple attached documents
+    docs?: LectureDoc[];
+    // Legacy single-doc fields (kept for save compatibility)
+    documentFileId?: string;
 }
 
 export interface Level {
     id: string;
-    name: string;
+    title: string;
     lectures: Lecture[];
 }
 
 export interface Subject {
     id: string;
-    name: string;
+    title: string;
     description: string;
     icon: string;
     category?: string;
@@ -26,4 +48,22 @@ export interface Subject {
     createdAt: string;
 }
 
-export type TeacherNavItem = 'dashboard' | 'subjects' | 'students' | 'analytics' | 'profile';
+export type TeacherNavItem = 'dashboard' | 'subjects' | 'students' | 'analytics' | 'profile' | 'accounting';
+
+// Category to Icon mapping
+export const categoryIcons: Record<string, string> = {
+    'عام': '📚',
+    'رياضيات': '📐',
+    'علوم': '🧪',
+    'لغة عربية': '✍️',
+    'لغة إنجليزية': '🌍',
+    'فيزياء': '⚡',
+    'كيمياء': '🧪',
+    'أحياء': '🧬',
+    'تاريخ': '📜',
+    'جغرافيا': '🌍',
+    'برمجة': '💻',
+    'فنون': '🎨',
+    'تربية دينية': '🕌',
+    'ذكاء اصطناعي': '🤖',
+};

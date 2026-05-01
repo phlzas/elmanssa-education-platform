@@ -21,12 +21,19 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
         e.preventDefault();
         try {
             await sendContactMessage(formData);
-            setSubmitted(true);
-            setTimeout(() => setSubmitted(false), 5000);
         } catch (error) {
-            console.error('Submission failed', error);
-            // optionally handle visual error
+            console.error('API submission failed, falling back to mailto', error);
         }
+        // Always open mailto as direct delivery to the contact email
+        const body = encodeURIComponent(
+            `الاسم: ${formData.name}\nالبريد: ${formData.email}\nنوع الرسالة: ${formData.type}\n\n${formData.message}`
+        );
+        window.open(
+            `mailto:h8317918@gmail.com?subject=${encodeURIComponent(formData.subject)}&body=${body}`,
+            '_blank'
+        );
+        setSubmitted(true);
+        setTimeout(() => setSubmitted(false), 5000);
     };
 
     const contactMethods = [
@@ -37,7 +44,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                 </svg>
             ),
             title: 'البريد الإلكتروني',
-            detail: 'support@elmanssa.com',
+            detail: 'h8317918@gmail.com',
             desc: 'نرد خلال 24 ساعة',
             color: 'from-blue-500/10 to-blue-600/10',
             borderColor: 'border-blue-200',
@@ -86,7 +93,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
     ];
 
     return (
-        <div className="bg-gradient-to-b from-[#F0F4F8] to-[#FEFEFE] min-h-screen">
+        <div dir="rtl" className="bg-gradient-to-b from-[#F0F4F8] to-[#FEFEFE] min-h-screen font-cairo">
             {/* Hero Section */}
             <div className="bg-gradient-to-l from-[#034289] to-[#022a5c] text-white py-16 px-4 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
@@ -110,7 +117,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                     {contactMethods.map((method, idx) => (
                         <div
                             key={idx}
-                            className={`bg-white rounded-2xl p-6 shadow-lg border ${method.borderColor} hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group`}
+                            className={`bg-white rounded-2xl p-6 shadow-lg border ${method.borderColor} hover:shadow-xl transition-all duration-200 hover:-translate-y-1 cursor-pointer group`}
                         >
                             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${method.color} flex items-center justify-center mb-4 ${method.textColor} group-hover:scale-110 transition-transform`}>
                                 {method.icon}
@@ -158,7 +165,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                                                     key={type.value}
                                                     type="button"
                                                     onClick={() => setFormData({ ...formData, type: type.value })}
-                                                    className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${formData.type === type.value
+                                                    className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${formData.type === type.value
                                                         ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
                                                         : 'bg-[#F0F6F2] text-[#034289]/60 hover:bg-[#D2E1D9] hover:text-[#034289]'
                                                         }`}
@@ -225,7 +232,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                                     {/* Submit */}
                                     <button
                                         type="submit"
-                                        className="btn-primary w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg"
+                                        className="btn-primary w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg cursor-pointer transition-colors duration-200"
                                     >
                                         <span className="relative z-10 flex items-center justify-center gap-2">
                                             إرسال الرسالة
@@ -254,7 +261,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                                     <button
                                         key={idx}
                                         onClick={() => onNavigate(link.page)}
-                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#F0F6F2] transition-colors text-right group"
+                                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[#F0F6F2] transition-colors duration-200 text-right group cursor-pointer"
                                     >
                                         <span className="text-xl">{link.icon}</span>
                                         <span className="text-[#034289] font-medium group-hover:text-[#4F8751] transition-colors">{link.label}</span>
@@ -278,7 +285,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onNavigate }) => {
                                 ].map((social, idx) => (
                                     <button
                                         key={idx}
-                                        className={`${social.color} text-white rounded-xl p-3 font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 hover:scale-105 transition-all shadow-sm`}
+                                        className={`${social.color} text-white rounded-xl p-3 font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 hover:scale-105 transition-all duration-200 shadow-sm cursor-pointer`}
                                     >
                                         <span className="text-base">{social.icon}</span>
                                         {social.name}

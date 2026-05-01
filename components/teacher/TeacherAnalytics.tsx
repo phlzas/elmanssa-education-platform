@@ -16,8 +16,8 @@ interface TeacherAnalyticsProps {
 const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({
     subjects, totalSubjects, totalStudents, totalLectures, publishedCount, activities,
 }) => (
-    <div style={{ animation: 'fadeIn 0.3s ease' }}>
-        <h2 style={{ fontSize: '19px', fontWeight: 800, color: '#f1f5f9', margin: '0 0 18px', fontFamily: "'Cairo', sans-serif", display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="animate-fade-in">
+        <h2 className="text-lg font-extrabold text-slate-100 mb-4 font-cairo flex items-center gap-2">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2">
                 <line x1="18" y1="20" x2="18" y2="10" strokeLinecap="round"/>
                 <line x1="12" y1="20" x2="12" y2="4" strokeLinecap="round"/>
@@ -33,23 +33,26 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({
             publishedCount={publishedCount}
         />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Subject performance */}
-            <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '18px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px', fontFamily: "'Cairo', sans-serif" }}>أداء المواد</h3>
+            <div className="bg-[#0f172a]/80 border border-white/[0.07] rounded-2xl p-4">
+                <h3 className="text-sm font-bold text-slate-100 mb-4 font-cairo">أداء المواد</h3>
                 {subjects.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', fontFamily: "'Cairo', sans-serif" }}>لا توجد مواد بعد</p>
+                    <p className="text-center text-slate-500 text-[13px] font-cairo">لا توجد مواد بعد</p>
                 ) : subjects.map(sub => {
                     const lecs = sub.levels.reduce((a, l) => a + l.lectures.length, 0);
                     const pct = Math.min(100, Math.round((sub.students / (totalStudents || 1)) * 100));
                     return (
-                        <div key={sub.id} style={{ marginBottom: '14px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#cbd5e1', fontFamily: "'Cairo', sans-serif" }}>{sub.name}</span>
-                                <span style={{ fontSize: '11px', color: '#64748b', fontFamily: "'Cairo', sans-serif" }}>{sub.students} طالب · {lecs} محاضرة</span>
+                        <div key={sub.id} className="mb-3.5">
+                            <div className="flex justify-between mb-1.5">
+                                <span className="text-[13px] font-semibold text-slate-300 font-cairo">{sub.Title}</span>
+                                <span className="text-[11px] text-slate-500 font-cairo">{sub.students} طالب · {lecs} محاضرة</span>
                             </div>
-                            <div style={{ height: '7px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${pct}%`, borderRadius: '4px', background: 'linear-gradient(90deg, #f59e0b, #d97706)', transition: 'width 0.6s ease' }} />
+                            <div className="h-[7px] rounded-full bg-white/[0.06] overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-500"
+                                    style={{ width: `${pct}%` }}
+                                />
                             </div>
                         </div>
                     );
@@ -57,24 +60,21 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({
             </div>
 
             {/* Recent activity */}
-            <div style={{ background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '18px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px', fontFamily: "'Cairo', sans-serif" }}>آخر الأنشطة</h3>
+            <div className="bg-[#0f172a]/80 border border-white/[0.07] rounded-2xl p-4">
+                <h3 className="text-sm font-bold text-slate-100 mb-4 font-cairo">آخر الأنشطة</h3>
                 {activities.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#64748b', fontSize: '13px', fontFamily: "'Cairo', sans-serif" }}>لا توجد أنشطة حديثة</p>
+                    <p className="text-center text-slate-500 text-[13px] font-cairo">لا توجد أنشطة حديثة</p>
                 ) : activities.map((a, i) => (
-                    <div key={i} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 0',
-                        borderBottom: i < activities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
-                    }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245,158,11,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div key={i} className="flex items-start gap-2.5 py-2.5 border-b border-white/[0.04] last:border-0">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/[0.08] flex items-center justify-center shrink-0">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" strokeLinecap="round" strokeLinejoin="round"/>
                                 <polyline points="12 6 12 12 16 14" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '13px', color: '#cbd5e1', fontFamily: "'Cairo', sans-serif", display: 'block' }}>{a.text}</span>
-                            <span style={{ fontSize: '11px', color: '#475569', fontFamily: "'Cairo', sans-serif" }}>{a.time}</span>
+                        <div className="flex-1 min-w-0">
+                            <span className="text-[13px] text-slate-300 font-cairo block">{a.text}</span>
+                            <span className="text-[11px] text-slate-500 font-cairo">{a.time}</span>
                         </div>
                     </div>
                 ))}

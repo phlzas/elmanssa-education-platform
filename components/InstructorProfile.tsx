@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Page, AccountType } from '../App';
-import { Course } from '../types';
+import { Course } from '../types/types';
 import { fetchCourses } from '../services/api';
 import StarIcon from './icons/StarIcon';
 
@@ -65,12 +65,12 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
     }, []);
 
     return (
-        <div className="bg-[#F8FAFA] min-h-screen">
+        <div dir="rtl" className="bg-[#F8FAFA] min-h-screen" style={{ fontFamily: "'Cairo', sans-serif" }}>
             {/* Cover Image */}
             <div className="relative h-64 md:h-80 overflow-hidden">
                 <img
                     src={mockInstructor.coverImage}
-                    alt="cover"
+                    alt="صورة غلاف ملف المدرس"
                     className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#034289]/90 via-[#034289]/40 to-transparent" />
@@ -145,7 +145,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.key
+                                className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${activeTab === tab.key
                                     ? 'bg-[#034289] text-white shadow-lg shadow-[#034289]/30'
                                     : 'text-[#034289]/60 hover:bg-[#F0F6F2] hover:text-[#034289]'
                                     }`}
@@ -311,7 +311,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onNavigate }) => 
                                     </div>
                                     <button
                                         onClick={() => onNavigate('courses')}
-                                        className="bg-[#4F8751] hover:bg-[#3d6a3f] text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-[#4F8751]/30 hover:shadow-xl hover:-translate-y-0.5"
+                                        className="bg-[#4F8751] hover:bg-[#3d6a3f] text-white px-8 py-4 rounded-xl font-bold transition-all duration-200 shadow-lg shadow-[#4F8751]/30 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
                                     >
                                         استكشف دوراته
                                     </button>

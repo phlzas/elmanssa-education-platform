@@ -21,7 +21,7 @@ const SupportPage: React.FC<SupportPageProps> = ({ onNavigate }) => {
     ];
 
     return (
-        <div className="bg-[#F8FAFA] min-h-screen py-20 px-4">
+        <div dir="rtl" className="bg-[#F8FAFA] min-h-screen py-20 px-4 font-cairo">
             <div className="container mx-auto max-w-4xl">
                 <h1 className="text-4xl font-black text-[#034289] mb-6 text-center">مركز المساعدة</h1>
                 <div className="bg-white rounded-2xl shadow-sm border border-[#D2E1D9] p-8 mb-12">
@@ -33,7 +33,7 @@ const SupportPage: React.FC<SupportPageProps> = ({ onNavigate }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
                     {categories.map((cat, idx) => (
-                        <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-[#D2E1D9] hover:border-[#4F8751] hover:shadow-md transition-all cursor-pointer group flex items-start gap-4">
+                        <div key={idx} className="bg-white p-6 rounded-xl shadow-sm border border-[#D2E1D9] hover:border-[#4F8751] hover:shadow-md transition-all duration-200 cursor-pointer group flex items-start gap-4">
                             <span className="text-3xl bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[#4F8751]/10 group-hover:text-[#4F8751] transition-colors">{cat.icon}</span>
                             <div>
                                 <h3 className="text-lg font-bold text-[#034289] mb-1">{cat.title}</h3>

@@ -1,316 +1,398 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Page } from '../App';
-import { startAIConversation, sendAIMessage } from '../services/api';
+import { apiRequest } from '../api/client';
 
 interface AIPageProps {
     onNavigate: (page: Page) => void;
 }
 
 interface Message {
-    id: number;
+    role: 'user' | 'assistant';
     text: string;
-    sender: 'user' | 'ai';
-    timestamp: string;
 }
 
-const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: 1,
-            text: 'مرحباً! أنا مساعدك الذكي في منصة التعليم. كيف يمكنني مساعدتك اليوم؟ يمكنني اقتراح دورات مناسبة، الإجابة على أسئلتك، أو مساعدتك في التخطيط لمسارك التعليمي.',
-            sender: 'ai',
-            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-        }
-    ]);
-    const [inputValue, setInputValue] = useState('');
-    const [conversationId, setConversationId] = useState<string | null>(null);
-    const chatContainerRef = useRef<HTMLDivElement>(null);
+async function chat(message: string, history: Message[]): Promise<string> {
+    const res = await apiRequest('/ai/public-chat', {
+        method: 'POST',
+        body: JSON.stringify({
+            message,
+            history: history.map(h => ({ role: h.role, text: h.text })),
+        }),
+    });
+    return (res?.reply ?? res?.data?.reply ?? '') as string;
+}
 
-    useEffect(() => {
-        const initConv = async () => {
-            try {
-                const data = await startAIConversation();
-                if (data && data.id) {
-                    setConversationId(data.id);
-                }
-            } catch (err) {
-                console.error('Failed to init AI conversation', err);
+// ── Markdown renderer ──────────────────────────────────────────
+// Handles: **bold**, *italic*, `code`, numbered lists, bullet lists, blank-line paragraphs
+function MarkdownText({ text }: { text: string }) {
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+
+    const renderInline = (raw: string): React.ReactNode[] => {
+        const parts: React.ReactNode[] = [];
+        // Split on **bold**, *italic*, `code` — in that priority order
+        const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+        let last = 0;
+        let m: RegExpExecArray | null;
+        let key = 0;
+        while ((m = regex.exec(raw)) !== null) {
+            if (m.index > last) parts.push(raw.slice(last, m.index));
+            if (m[2] !== undefined) parts.push(<strong key={key++} className="font-bold text-slate-100">{m[2]}</strong>);
+            else if (m[3] !== undefined) parts.push(<em key={key++} className="italic text-slate-300">{m[3]}</em>);
+            else if (m[4] !== undefined) parts.push(<code key={key++} className="bg-white/[0.08] text-amber-300 px-1.5 py-0.5 rounded text-[12px] font-mono">{m[4]}</code>);
+            last = m.index + m[0].length;
+        }
+        if (last < raw.length) parts.push(raw.slice(last));
+        return parts;
+    };
+
+    while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Blank line — spacing
+        if (trimmed === '') {
+            i++;
+            continue;
+        }
+
+        // Numbered list: "1. " or "١. "
+        if (/^(\d+|[١-٩][٠-٩]*)\.\s/.test(trimmed)) {
+            const listItems: React.ReactNode[] = [];
+            while (i < lines.length && /^(\d+|[١-٩][٠-٩]*)\.\s/.test(lines[i].trim())) {
+                const content = lines[i].trim().replace(/^(\d+|[١-٩][٠-٩]*)\.\s/, '');
+                listItems.push(
+                    <li key={i} className="flex gap-2 items-start">
+                        <span className="text-[#4F8751] font-bold text-sm mt-0.5 flex-shrink-0">
+                            {lines[i].trim().match(/^(\d+|[١-٩][٠-٩]*)/)?.[0]}.
+                        </span>
+                        <span>{renderInline(content)}</span>
+                    </li>
+                );
+                i++;
             }
-        };
-        initConv();
-    }, []);
-
-    const scrollToBottom = () => {
-        if (chatContainerRef.current) {
-            const { scrollHeight, clientHeight } = chatContainerRef.current;
-            chatContainerRef.current.scrollTo({
-                top: scrollHeight - clientHeight,
-                behavior: 'smooth'
-            });
+            elements.push(<ol key={`ol-${i}`} className="space-y-1.5 my-2">{listItems}</ol>);
+            continue;
         }
-    };
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputValue.trim()) return;
-
-        const userText = inputValue;
-        const userMsg: Message = {
-            id: Date.now(),
-            text: userText,
-            sender: 'user',
-            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-        };
-
-        setMessages(prev => [...prev, userMsg]);
-        setInputValue('');
-
-        if (conversationId) {
-            // Indicate loading typing...
-            const loadingId = Date.now() + 1;
-            setMessages(prev => [...prev, {
-                id: loadingId,
-                text: 'جاري التفكير...',
-                sender: 'ai',
-                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-            }]);
-
-            sendAIMessage(conversationId, userText)
-                .then((res) => {
-                    const aiText = res?.message || res?.text || res?.content || 'عذراً، حدث خطأ أثناء معالجة الرد.';
-                    setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, text: aiText } : m));
-                })
-                .catch((err) => {
-                    console.error(err);
-                    setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, text: 'تعذر الاتصال بالخادم للإجابة على سؤالك.' } : m));
-                });
+        // Bullet list: "* " or "- " or "• "
+        if (/^[\*\-•]\s/.test(trimmed)) {
+            const listItems: React.ReactNode[] = [];
+            while (i < lines.length && /^[\*\-•]\s/.test(lines[i].trim())) {
+                const content = lines[i].trim().replace(/^[\*\-•]\s/, '');
+                listItems.push(
+                    <li key={i} className="flex gap-2 items-start">
+                        <span className="text-[#4F8751] mt-1.5 flex-shrink-0">
+                            <svg width="6" height="6" viewBox="0 0 6 6" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="3"/></svg>
+                        </span>
+                        <span>{renderInline(content)}</span>
+                    </li>
+                );
+                i++;
+            }
+            elements.push(<ul key={`ul-${i}`} className="space-y-1.5 my-2">{listItems}</ul>);
+            continue;
         }
-    };
+
+        // Heading-like line (starts with **text:** pattern — Gemini uses this for section headers)
+        if (/^\*\*[^*]+\*\*[:\.]?\s*$/.test(trimmed)) {
+            elements.push(
+                <p key={i} className="font-bold text-slate-100 text-[15px] mt-3 mb-1">
+                    {renderInline(trimmed)}
+                </p>
+            );
+            i++;
+            continue;
+        }
+
+        // Regular paragraph line
+        elements.push(
+            <p key={i} className="leading-relaxed text-slate-200">
+                {renderInline(trimmed)}
+            </p>
+        );
+        i++;
+    }
+
+    return <div className="space-y-1">{elements}</div>;
+}
+
+// ── AI Loading Indicator ──────────────────────────────────────
+// Stage 1: 3×3 dot grid with staggered pulse
+// Stage 2: grid collapses → avatar pops in (triggered when loading ends)
+function AILoadingIndicator({ done }: { done: boolean }) {
+    const DOTS = 9;
+    // stagger delays: row-major order, 133ms apart → full cycle ~1200ms
+    const delays = [0, 133, 266, 400, 533, 666, 800, 933, 1066];
 
     return (
-        <div className="bg-[#FEFEFE] min-h-screen text-[#034289]">
-            {/* Hero Header */}
-            <div className="bg-[#034289] text-white py-12 relative overflow-hidden">
-                <div className="absolute inset-0 dots-pattern opacity-10" />
-                <div className="absolute top-0 right-0 w-96 h-96 bg-[#4F8751]/20 rounded-full blur-3xl opacity-50" />
-                <div className="container mx-auto px-4 relative z-10 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4 backdrop-blur-sm animate-bounce-slow">
-                        <svg className="w-8 h-8 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-black mb-2">مساعد الذكاء الاصطناعي</h1>
-                    <p className="text-white/70 text-lg">مساعدك الشخصي الذكي في رحلتك التعليمية</p>
-                </div>
+        <div className="flex gap-3" role="status" aria-label="جاري التفكير">
+            {/* Avatar slot */}
+            <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#4F8751]/30 to-[#034289]/30" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F8751" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
             </div>
 
-            <div className="container mx-auto px-4 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Bubble */}
+            <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/[0.07] flex items-center justify-center min-w-[72px] min-h-[48px] relative overflow-hidden">
 
-                    {/* Sidebar (Recommendations) - Right Side in RTL */}
-                    <div className="lg:col-span-4 space-y-6 order-2 lg:order-1">
+                {/* Stage 1 — dot grid */}
+                {!done && (
+                    <div className="dot-grid grid gap-[6px]" style={{ gridTemplateColumns: 'repeat(3, 8px)' }}>
+                        {Array.from({ length: DOTS }).map((_, idx) => (
+                            <span
+                                key={idx}
+                                className="ai-dot block w-2 h-2 rounded-full bg-[#00AEEF]"
+                                style={{ animationDelay: `${delays[idx]}ms` }}
+                            />
+                        ))}
+                    </div>
+                )}
 
-                        {/* Recommended Courses Widget */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-[#D2E1D9]/50 overflow-hidden">
-                            <div className="bg-[#F8FAFA] p-4 border-b border-[#D2E1D9]/50 flex items-center justify-between">
-                                <h3 className="font-bold flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                    توصيات مخصصة لك
-                                </h3>
+                {/* Stage 2+3 — collapse then avatar pop */}
+                {done && (
+                    <span className="ai-avatar-pop flex items-center justify-center">
+                        <svg width="22" height="22" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+                            {/* Head shape */}
+                            <path
+                                d="M50,18 C33,18 22,30 22,46 C22,68 50,86 50,86 C50,86 78,68 78,46 C78,30 67,18 50,18 Z"
+                                fill="url(#ai-grad)"
+                            />
+                            {/* Eyes */}
+                            <circle cx="38" cy="44" r="5" fill="white" opacity="0.95"/>
+                            <circle cx="62" cy="44" r="5" fill="white" opacity="0.95"/>
+                            <circle cx="39.5" cy="45.5" r="2.5" fill="#034289"/>
+                            <circle cx="63.5" cy="45.5" r="2.5" fill="#034289"/>
+                            {/* Smile */}
+                            <path d="M38,58 Q50,68 62,58" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.9"/>
+                            <defs>
+                                <linearGradient id="ai-grad" x1="22" y1="18" x2="78" y2="86" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#4F8751"/>
+                                    <stop offset="100%" stopColor="#034289"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+const SUGGESTIONS = [
+    'اشرح لي قانون نيوتن الثاني',
+    'ما الفرق بين التفاضل والتكامل؟',
+    'كيف أحل معادلة من الدرجة الثانية؟',
+    'ما هي أهم قواعد اللغة العربية؟',
+];
+
+const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [loadingDone, setLoadingDone] = useState(false);
+    const [error, setError] = useState('');
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, loading]);
+
+    const send = async (text: string) => {
+        const trimmed = text.trim();
+        if (!trimmed || loading) return;
+        setError('');
+        setLoadingDone(false);
+        const userMsg: Message = { role: 'user', text: trimmed };
+        const snapshot = [...messages, userMsg];
+        setMessages(snapshot);
+        setInput('');
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
+        setLoading(true);
+        try {
+            const reply = await chat(trimmed, messages);
+            if (!reply) throw new Error('empty');
+            // Stage 2: trigger collapse → avatar pop (300ms), then show reply
+            setLoadingDone(true);
+            await new Promise(r => setTimeout(r, 600));
+            setMessages([...snapshot, { role: 'assistant', text: reply }]);
+        } catch {
+            setError('حدث خطأ في الاتصال. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.');
+        }
+        setLoading(false);
+        setLoadingDone(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            send(input);
+        }
+    };
+
+    const isEmpty = messages.length === 0;
+
+    return (
+        <div dir="rtl" className="flex flex-col h-screen bg-[#0a1628] font-cairo text-slate-200 overflow-hidden">
+
+            {/* Header */}
+            <header className="flex-shrink-0 bg-[#0f172a]/95 backdrop-blur border-b border-white/[0.06] px-5 py-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => onNavigate('home')}
+                        className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none p-1"
+                        aria-label="رجوع للرئيسية"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </button>
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4F8751] to-[#034289] flex items-center justify-center flex-shrink-0">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold text-slate-100 leading-tight">مساعد المنصة الذكي</div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" aria-hidden="true"></span>
+                                <span className="text-[11px] text-green-400">متاح الآن</span>
                             </div>
-                            <div className="p-4 space-y-4">
-                                {[
-                                    { title: 'تطوير تطبيقات الويب الحديثة', match: 95, level: 'مناسب لمستواك' },
-                                    { title: 'أساسيات البرمجة بلغة Python', match: 88, level: 'شائع في مجالك' },
-                                    { title: 'تصميم واجهات المستخدم UI/UX', match: 82, level: 'يكمل مهاراتك' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className="bg-[#F8FAFA] p-3 rounded-xl border border-[#D2E1D9]/30 hover:border-[#4F8751]/50 transition-colors cursor-pointer group">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="badge-primary text-[10px] px-2 py-0.5 rounded-full">{item.match}% تطابق</div>
-                                        </div>
-                                        <h4 className="font-bold text-sm mb-1 group-hover:text-[#4F8751] transition-colors">{item.title}</h4>
-                                        <p className="text-xs text-[#034289]/50 flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 bg-[#4F8751] rounded-full"></span>
-                                            {item.level}
-                                        </p>
-                                    </div>
+                        </div>
+                    </div>
+                </div>
+                {messages.length > 0 && (
+                    <button
+                        onClick={() => { setMessages([]); setError(''); }}
+                        className="text-slate-500 hover:text-slate-300 text-xs font-cairo cursor-pointer bg-transparent border-none transition-colors"
+                    >
+                        محادثة جديدة
+                    </button>
+                )}
+            </header>
+
+            {/* Chat area */}
+            <main className="flex-1 overflow-y-auto px-4 py-6">
+                <div className="max-w-3xl mx-auto">
+                    {isEmpty ? (
+                        <div className="flex flex-col items-center justify-center min-h-[55vh] text-center">
+                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#4F8751]/20 to-[#034289]/20 flex items-center justify-center mb-5 border border-white/[0.06]">
+                                <svg className="w-10 h-10 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-extrabold text-slate-100 mb-2">كيف يمكنني مساعدتك؟</h2>
+                            <p className="text-slate-500 text-sm mb-8 max-w-xs">اسألني عن أي مادة دراسية وسأساعدك في الفهم والشرح</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md">
+                                {SUGGESTIONS.map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => send(s)}
+                                        className="text-right px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.08] hover:border-[#4F8751]/40 transition-all duration-200 cursor-pointer font-cairo"
+                                    >
+                                        {s}
+                                    </button>
                                 ))}
                             </div>
                         </div>
-
-                        {/* Learning Path Widget */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-[#D2E1D9]/50 overflow-hidden">
-                            <div className="bg-[#F8FAFA] p-4 border-b border-[#D2E1D9]/50">
-                                <h3 className="font-bold flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
-                                    مسارك التعليمي المقترح
-                                </h3>
-                            </div>
-                            <div className="p-4">
-                                <div className="space-y-0 relative">
-                                    {/* Line */}
-                                    <div className="absolute top-2 bottom-2 right-[11px] w-0.5 bg-[#D2E1D9]"></div>
-
-                                    {[
-                                        { title: 'أساسيات البرمجة', status: 'completed', label: 'مكتمل' },
-                                        { title: 'تطوير الويب', status: 'current', label: 'قيد التقدم - 45%' },
-                                        { title: 'React متقدم', status: 'locked', label: 'قريباً' }
-                                    ].map((step, idx) => (
-                                        <div key={idx} className="relative flex items-start gap-4 pb-6 last:pb-0">
-                                            <div className={`relative z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${step.status === 'completed' ? 'theme-bg-emerald border-emerald-500 text-white' :
-                                                step.status === 'current' ? 'bg-white border-[#034289] text-[#034289]' :
-                                                    'bg-[#F8FAFA] border-gray-300 text-gray-300'
-                                                }`}>
-                                                {step.status === 'completed' && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                                {step.status === 'current' && <div className="w-2 h-2 bg-[#034289] rounded-full animate-pulse"></div>}
-                                            </div>
-                                            <div>
-                                                <h4 className={`text-sm font-bold ${step.status === 'locked' ? 'text-gray-400' : 'text-[#034289]'}`}>{step.title}</h4>
-                                                <span className="text-[10px] text-gray-500">{step.label}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Smart Tips Widget */}
-                        <div className="bg-[#4F8751]/10 rounded-2xl p-4 border border-[#4F8751]/20">
-                            <h3 className="font-bold text-[#034289] mb-3 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                                نصائح ذكية
-                            </h3>
-                            <ul className="space-y-3 text-sm text-[#034289]/80">
-                                <li className="flex gap-2">
-                                    <span className="text-[#4F8751] font-bold">•</span>
-                                    خصص 30 دقيقة يومياً لمراجعة ما تعلمته
-                                </li>
-                                <li className="flex gap-2">
-                                    <span className="text-[#4F8751] font-bold">•</span>
-                                    أنت على بعد درسين من إكمال المستوى الحالي
-                                </li>
-                            </ul>
-                        </div>
-
-                    </div>
-
-                    {/* Main Content - Left Side in RTL */}
-                    <div className="lg:col-span-8 space-y-6 order-1 lg:order-2">
-
-                        {/* Features Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[
-                                { title: 'مساعد تعليمي ذكي', desc: 'اطرح أسئلتك واحصل على إجابات فورية ودقيقة', icon: '💡' },
-                                { title: 'اقتراح دورات مخصصة', desc: 'احصل على توصيات دورات بناء على مستواك وأهدافك', icon: '📚' },
-                                { title: 'خطط دراسية ذكية', desc: 'خطط دراسية مخصصة تناسب وقتك وسرعة تعلمك', icon: '📅' },
-                                { title: 'تحليل التقدم', desc: 'تتبع تقدمك واحصل على نصائح لتحسين الأداء', icon: '📈' },
-                            ].map((feature, idx) => (
-                                <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-[#D2E1D9]/50 hover:shadow-md transition-all hover:-translate-y-1 cursor-pointer">
-                                    <div className="w-10 h-10 bg-[#F8FAFA] rounded-full flex items-center justify-center text-xl mb-4 shadow-inner">
-                                        {feature.icon}
+                    ) : (
+                        <div className="space-y-5">
+                            {messages.map((msg, i) => (
+                                <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    {/* Avatar */}
+                                    <div
+                                        className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ${
+                                            msg.role === 'user'
+                                                ? 'bg-[#034289]/30 text-[#38bdf8]'
+                                                : 'bg-gradient-to-br from-[#4F8751]/30 to-[#034289]/30 text-[#4F8751]'
+                                        }`}
+                                        aria-hidden="true"
+                                    >
+                                        {msg.role === 'user' ? (
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
+                                                <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        ) : (
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                                            </svg>
+                                        )}
                                     </div>
-                                    <h3 className="font-bold text-lg mb-2 text-[#034289]">{feature.title}</h3>
-                                    <p className="text-sm text-[#034289]/60 leading-relaxed">{feature.desc}</p>
+                                    {/* Bubble */}
+                                    <div
+                                        className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                                            msg.role === 'user'
+                                                ? 'bg-[#034289]/40 text-slate-100 rounded-tr-sm whitespace-pre-wrap'
+                                                : 'bg-white/[0.05] border border-white/[0.07] text-slate-200 rounded-tl-sm'
+                                        }`}
+                                    >
+                                        {msg.role === 'user'
+                                            ? msg.text
+                                            : <MarkdownText text={msg.text} />
+                                        }
+                                    </div>
                                 </div>
                             ))}
-                        </div>
 
-                        {/* Chat Interface */}
-                        <div className="bg-white rounded-2xl shadow-lg border border-[#D2E1D9]/50 flex flex-col h-[600px] overflow-hidden relative">
-                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
+                            {/* Typing indicator */}
+                            {loading && (
+                                <AILoadingIndicator done={loadingDone} />
+                            )}
 
-                            {/* Chat Header */}
-                            <div className="p-4 bg-[#F8FAFA] border-b border-[#D2E1D9] flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#034289] to-[#4F8751] flex items-center justify-center text-white">
-                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                            {error && (
+                                <div role="alert" className="text-center text-red-400 text-sm py-2 px-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                                    {error}
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-[#034289]">المساعد الذكي</h3>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                        </span>
-                                        <span className="text-xs text-emerald-600 font-medium">متصل الآن</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Messages */}
-                            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-white to-[#F8FAFA] scroll-smooth">
-                                {messages.map((msg) => (
-                                    <div key={msg.id} className={`flex items-start gap-4 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.sender === 'user' ? 'bg-[#034289] text-white' : 'bg-gradient-to-br from-[#034289] to-[#4F8751] text-white'
-                                            }`}>
-                                            {msg.sender === 'user' ? (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                            )}
-                                        </div>
-
-                                        <div className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${msg.sender === 'user'
-                                            ? 'bg-[#034289] text-white rounded-tl-none'
-                                            : 'bg-white border border-[#D2E1D9] text-[#034289] rounded-tr-none'
-                                            }`}>
-                                            {msg.sender === 'ai' && (
-                                                <div className="flex items-center gap-1 text-[#4F8751] text-xs font-bold mb-1">
-                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                                    AI Assistant
-                                                </div>
-                                            )}
-                                            <p className="leading-relaxed">{msg.text}</p>
-                                            <span className={`text-[10px] block mt-1 ${msg.sender === 'user' ? 'text-white/60' : 'text-gray-400'}`}>
-                                                {msg.timestamp}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Suggested Inputs */}
-                            <div className="px-6 py-2 flex gap-2 overflow-x-auto no-scrollbar">
-                                {['كيف أحسن مهاراتي في التصميم؟', 'اقترح لي خطة دراسية', 'ما هي الدورات الأكثر طلباً؟'].map((q, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => setInputValue(q)}
-                                        className="whitespace-nowrap px-3 py-1.5 bg-[#F8FAFA] hover:bg-[#D2E1D9]/30 border border-[#D2E1D9] rounded-full text-xs text-[#034289] transition-colors"
-                                    >
-                                        {q}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Input Area */}
-                            <div className="p-4 border-t border-[#D2E1D9]/50 bg-white">
-                                <form onSubmit={handleSendMessage} className="flex gap-3">
-                                    <input
-                                        type="text"
-                                        value={inputValue}
-                                        onChange={(e) => setInputValue(e.target.value)}
-                                        placeholder="اكتب سؤالك هنا..."
-                                        className="flex-1 bg-[#F8FAFA] border border-[#D2E1D9] rounded-xl px-5 py-4 focus:outline-none focus:border-[#4F8751] focus:ring-4 focus:ring-[#4F8751]/5 transition-all"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="bg-gradient-to-r from-[#034289] to-[#0459b7] text-white px-6 rounded-xl hover:shadow-lg hover:shadow-[#034289]/20 transition-all transform hover:-translate-y-0.5"
-                                    >
-                                        <svg className="w-6 h-6 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                    </button>
-                                </form>
-                            </div>
-
+                            )}
+                            <div ref={bottomRef} />
                         </div>
-                    </div>
-
+                    )}
                 </div>
+            </main>
+
+            {/* Input bar */}
+            <div className="flex-shrink-0 bg-[#0a1628]/95 backdrop-blur border-t border-white/[0.06] px-4 py-4">
+                <div className="max-w-3xl mx-auto flex gap-3 items-end">
+                    <div className="flex-1">
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onInput={e => {
+                                const t = e.currentTarget;
+                                t.style.height = 'auto';
+                                t.style.height = Math.min(t.scrollHeight, 140) + 'px';
+                            }}
+                            placeholder="اكتب سؤالك هنا... (Enter للإرسال، Shift+Enter لسطر جديد)"
+                            rows={1}
+                            disabled={loading}
+                            aria-label="رسالتك للمساعد الذكي"
+                            className="font-cairo w-full px-4 py-3 bg-white/[0.05] border border-white/10 rounded-2xl text-slate-200 text-sm outline-none focus:border-[#4F8751]/50 transition-colors duration-150 resize-none disabled:opacity-50 placeholder-slate-600"
+                            style={{ minHeight: '48px', maxHeight: '140px' }}
+                        />
+                    </div>
+                    <button
+                        onClick={() => send(input)}
+                        disabled={!input.trim() || loading}
+                        aria-label="إرسال الرسالة"
+                        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F8751] to-[#034289] flex items-center justify-center flex-shrink-0 cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-green-900/30"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+                            <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <p className="text-center text-[11px] text-slate-600 mt-2 font-cairo">
+                    مدعوم بـ Gemini AI — للأغراض التعليمية فقط
+                </p>
             </div>
         </div>
     );

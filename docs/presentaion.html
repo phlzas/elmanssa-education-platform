@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض إستراتيجية Elmanassa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --gold: #D4A853; --bg: #050505; --surface: #0F0F0F; }
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg); color: #F0F0F0; overflow: hidden; }
+        h1, h2, h3 { font-family: 'Syne', 'Cairo', sans-serif; }
+        .slide { display: none; height: 100vh; width: 100vw; padding: 4rem; animation: fadeIn 0.5s ease-out; }
+        .slide.active { display: flex; flex-direction: column; justify-content: center; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .gold-gradient { background: linear-gradient(135deg, #D4A853 0%, #F0C97A 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: var(--surface); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; padding: 1.5rem; transition: all 0.3s ease; }
+        .controls { position: fixed; bottom: 2rem; left: 2rem; display: flex; gap: 1rem; z-index: 100; }
+        .btn-nav { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; backdrop-filter: blur(10px); }
+        .btn-nav:hover { background: rgba(255,255,255,0.1); border-color: var(--gold); }
+        .progress-bar { position: fixed; bottom: 0; right: 0; height: 4px; background: var(--gold); transition: width 0.3s ease; z-index: 101; }
+        .feature-tag { background: rgba(212,168,83,0.1); color: var(--gold); padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(212,168,83,0.2); }
+        .price-tag { font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800; color: white; }
+        .cost-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-radius: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .cost-row:last-child { border-bottom: none; }
+        .cost-row:hover { background: rgba(255,255,255,0.03); }
+        .badge-one-time { background: rgba(212,168,83,0.15); color: #D4A853; padding: 2px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(212,168,83,0.3); }
+        .badge-monthly { background: rgba(59,130,246,0.15); color: #60a5fa; padding: 2px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(59,130,246,0.3); }
+        .badge-revenue { background: rgba(34,197,94,0.15); color: #4ade80; padding: 2px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; border: 1px solid rgba(34,197,94,0.3); }
+        .slide-counter { position: fixed; bottom: 2rem; right: 2rem; color: rgba(255,255,255,0.3); font-size: 0.85rem; font-family: 'Syne', sans-serif; z-index: 100; }
+    </style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-counter" id="slideCounter">1 / 14</div>
+<!-- Slide 1: Intro -->
+<div class="slide active" id="slide1">
+    <div class="max-w-5xl mx-auto text-center">
+        <h1 class="text-8xl font-extrabold mb-6 tracking-tight">Elmanassa</h1>
+        <p class="text-3xl text-gray-400 mb-12">Strategic Roadmap & Tech Partnership</p>
+        <div class="inline-block p-1 rounded-full bg-white/5 border border-white/10 px-8 py-3">
+            <span class="gold-gradient font-bold text-xl">مقترح الفريق الهندسي المطور</span>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 2: Cost Breakdown (NEW) -->
+<div class="slide" id="slide2">
+    <h2 class="text-5xl font-bold mb-8 gold-gradient">ملخص التكاليف الكاملة  ماذا تدفع وماذا تحصل</h2>
+    <div class="grid grid-cols-3 gap-6">
+        <!-- One-time payments -->
+        <div class="card border-yellow-500/20">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest">دفعات لمرة واحدة</p>
+                    <p class="font-bold text-yellow-400">One-Time Payments</p>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">Phase 1  البنية التحتية</p>
+                        <p class="text-xs text-gray-500">Backend + Security + 60+ APIs + Dashboards</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-white">2,800 ريال</p>
+                        <p class="text-xs text-gray-500">35,000 ج.م</p>
+                    </div>
+                </div>
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">Phase 2  الذكاء الاصطناعي</p>
+                        <p class="text-xs text-gray-500">AI + Live Stream + Quiz + IP Ownership</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-white">1,600 ريال</p>
+                        <p class="text-xs text-gray-500">20,000 ج.م</p>
+                    </div>
+                </div>
+                <div class="cost-row bg-yellow-500/5 rounded-xl mt-2">
+                    <p class="font-bold text-yellow-400">الإجمالي الكلي</p>
+                    <p class="font-bold text-yellow-400 text-xl">4,400 ريال</p>
+                </div>
+            </div>
+        </div>
+        <!-- Monthly costs -->
+        <div class="card border-blue-500/20">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest">تكاليف شهرية ثابتة</p>
+                    <p class="font-bold text-blue-400">Monthly Fixed Costs</p>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">إدارة تقنية + استضافة</p>
+                        <p class="text-xs text-gray-500">Server + Updates + Security patches</p>
+                    </div>
+                    <p class="font-bold text-white text-sm">30 ريال</p>
+                </div>
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">Hyperpay (السعودية)</p>
+                        <p class="text-xs text-gray-500">رسوم بوابة الدفع  اشتراك شهري</p>
+                    </div>
+                    <p class="font-bold text-white text-sm">~220 ريال</p>
+                </div>
+                <div class="cost-row bg-blue-500/5 rounded-xl mt-2">
+                    <p class="font-bold text-blue-400">الإجمالي الشهري</p>
+                    <p class="font-bold text-blue-400 text-xl">250 ريال</p>
+                </div>
+            </div>
+        </div>
+        <!-- Revenue share -->
+        <div class="card border-green-500/20">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest">مشاركة الإيرادات</p>
+                    <p class="font-bold text-green-400">Revenue Share</p>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">نسبة التسويق والإدارة</p>
+                        <p class="text-xs text-gray-500">تبدأ بعد أول 50 طالب فقط</p>
+                    </div>
+                    <p class="font-bold text-white text-sm">25%</p>
+                    <p class="font-bold text-white text-sm">لي مادي سنه</p>
+                </div>
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">Paymob  عمولة المعاملة</p>
+                        <p class="text-xs text-gray-500">لكل عملية دفع ناجحة</p>
+                    </div>
+                    <p class="font-bold text-white text-sm">~2.75%</p>
+                </div>
+                <div class="cost-row">
+                    <div>
+                        <p class="font-semibold text-sm">Hyperpay  عمولة المعاملة</p>
+                        <p class="text-xs text-gray-500">لكل عملية دفع ناجحة</p>
+                    </div>
+                    <p class="font-bold text-white text-sm">~2.5%</p>
+                </div>
+                <div class="cost-row bg-green-500/5 rounded-xl mt-2">
+                    <p class="text-xs text-gray-400"> 70% من الصافي إيراداتك (بعد كل الرسوم)</p>
+                    <p class="font-bold text-green-400 text-xl"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 3: Tech Value / Phase 1 -->
+<div class="slide" id="slide3">
+    <h2 class="text-5xl font-bold mb-8 gold-gradient">تكلفة البنية التحتية والبرمجة (Phase 1)</h2>
+    <div class="grid grid-cols-2 gap-8 items-center">
+        <div class="space-y-4">
+            <div class="card border-yellow-500/20">
+                <div class="flex justify-between items-start mb-3">
+                    <span class="badge-one-time">دفعة واحدة</span>
+                    <div class="text-yellow-400"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg></div>
+                </div>
+                <h4 class="font-bold mb-2">Backend & Security Redesign</h4>
+                <p class="text-sm text-gray-400">بناء SEIM TOOLS من الصفر لحماية البيانات وتشفير الفيديوهات (HLS) وربط أكثر من 60 نقطة اتصال برمجية.</p>
+            </div>
+            <div class="card border-yellow-500/20">
+                <div class="flex justify-between items-start mb-3">
+                    <span class="badge-one-time">دفعة واحدة</span>
+                    <div class="text-yellow-400"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
+                </div>
+                <h4 class="font-bold mb-2">Server-Side Video Processing</h4>
+                <p class="text-sm text-gray-400">نظام ضغط آلي للفيديوهات يوفر 70% من مساحة السيرفر وتكاليف الاستضافة الشهرية.</p>
+            </div>
+            <div class="card border-yellow-500/20">
+                <div class="flex justify-between items-start mb-3">
+                    <span class="badge-one-time">دفعة واحدة</span>
+                    <div class="text-yellow-400"><svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+                </div>
+                <h4 class="font-bold mb-2">3 لوحات تحكم كاملة</h4>
+                <p class="text-sm text-gray-400">طالب + معلم + أدمن  مع نظام إدارة حسابات مخصص لم يكن في الطلب الأصلي.</p>
+            </div>
+        </div>
+        <div class="text-center">
+            <p class="text-gray-500 mb-2 uppercase tracking-widest text-sm">إجمالي الاستثمار الأولي</p>
+            <div class="price-tag text-6xl mb-1">2,800 ريال</div>
+            <p class="text-gray-500 text-sm mb-6">35,000 ج.م  دفعة واحدة</p>
+            <div class="space-y-3 text-right">
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></div>
+                    <p class="text-sm text-gray-300">تسليم الكود الكامل + Repository Access</p>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></div>
+                    <p class="text-sm text-gray-300">بوابتا الدفع Paymob + Hyperpay جاهزتان</p>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                    <div class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></div>
+                    <p class="text-sm text-gray-300">حماية HLS + Watermark + SEIM Tools</p>
+                </div>
+            </div>
+            <div class="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
+                <p class="text-sm text-gray-300 italic">"أنت تشتري بنية تحتية هندسية تحمي أرباحك وتوفر مصاريف التشغيل مستقبلا."</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 4: Status -->
+<div class="slide" id="slide4">
+    <h2 class="text-5xl font-bold mb-12 gold-gradient text-right">حالة الـ Development الحالية</h2>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="card border-green-500/20">
+            <h3 class="text-green-400 text-2xl font-bold mb-4"> Completed (90%)</h3>
+            <ul class="space-y-4 text-gray-300 text-lg">
+                <li> Backend Architecture & Databases</li>
+                <li> Teacher Dashboard & Content Management</li>
+                <li> UI/UX Design & User Interface</li>
+                <li> Security Systems & Data Encryption</li>
+                <li> More than 60 active APIs</li>
+            </ul>
+        </div>
+        <div class="card border-yellow-500/20">
+            <h3 class="text-yellow-400 text-2xl font-bold mb-4"> In Progress (Pending Contract)</h3>
+            <ul class="space-y-4 text-gray-300 text-lg">
+                <li> AI Assistant Integration</li>
+                <li> Private Live Streaming Infrastructure</li>
+                <li> Smart Quiz System & PDF Processor</li>
+                <li> Server Setup</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 5: Phase 2 AI Features -->
+<div class="slide" id="slide5">
+    <h2 class="text-5xl font-bold mb-8 gold-gradient">تطوير ميزات الذكاء الاصطناعي (Phase 2)</h2>
+    <div class="grid grid-cols-2 gap-12">
+        <div class="card">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="badge-one-time">دفعة واحدة  بعد التسليم</span>
+            </div>
+            <h3 class="text-2xl font-bold mb-6">ما ستحصل عليه:</h3>
+            <ul class="space-y-4 text-gray-300 text-lg">
+                <li class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                    نظام AI Assistant مرتبط بملفات الـ PDF
+                </li>
+                <li class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                    بنية البث المباشر (Private Live Streaming)
+                </li>
+                <li class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                    نظام الاختبارات الذكي (Smart Quiz System)
+                </li>
+                <li class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></div>
+                    تسليم الكود الكامل والوصول للـ Repository
+                </li>
+                <li class="flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></div>
+                    <span class="text-green-300">نقل حقوق الملكية الفكرية الكاملة (IP Ownership)</span>
+                </li>
+            </ul>
+        </div>
+        <div class="flex flex-col justify-center text-center">
+            <p class="text-gray-500 mb-2 uppercase tracking-widest text-sm">تكلفة التطوير المتقدم</p>
+            <div class="price-tag text-6xl mb-1">1,600 ريال</div>
+            <p class="text-gray-500 text-sm mb-6">20,000 ج.م  دفعة واحدة</p>
+            <p class="text-gray-500 text-sm">تسدد بعد اكتمال الميزات وقبل التسليم</p>
+            <div class="mt-6 p-4 bg-yellow-500/5 rounded-xl border border-yellow-500/20">
+                <p class="text-sm text-yellow-300">بعد هذه الدفعة الكود ملكك بالكامل  لا قيود.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 6: Monthly Ops with Payment Gateway breakdown -->
+<div class="slide" id="slide6">
+    <h2 class="text-5xl font-bold mb-8 gold-gradient">التكاليف الشهرية الثابتة</h2>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="space-y-4">
+            <div class="card border-blue-500/20">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="badge-monthly">شهري ثابت</span>
+                        <h4 class="text-xl font-bold mt-2 text-blue-400">الإدارة التقنية (Monthly Ops)</h4>
+                    </div>
+                    <div class="text-right">
+                        <p class="price-tag text-3xl">150250</p>
+                        <p class="text-gray-500 text-sm">ريال / شهر</p>
+                    </div>
+                </div>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div> استضافة السيرفر وصيانته</li>
+                    <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div> تحديثات الحماية والأمان</li>
+                    <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div> حل المشكلات الفنية الفورية</li>
+                    <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div> مراقبة الأداء والـ Uptime</li>
+                </ul>
+            </div>
+            <div class="p-4 bg-white/5 rounded-xl border border-white/10">
+                <p class="text-sm text-gray-400 italic">في حال التوقف عن الدفع تتحول المنصة لوضع "Unmanaged"  لا يوجد دعم فني أو تحديثات.</p>
+            </div>
+        </div>
+        <div class="space-y-4">
+            <div class="card border-purple-500/20">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span class="badge-monthly">شهري ثابت</span>
+                        <h4 class="text-xl font-bold mt-2 text-purple-400">بوابات الدفع  رسوم الاشتراك</h4>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center font-bold text-sm">EG</div>
+                            <div>
+                                <p class="font-bold">Paymob</p>
+                                <p class="text-xs text-gray-500">اشتراك شهري + ~2.5% لكل معاملة</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-white">~100 ريال</p>
+                            <p class="text-xs text-gray-500">اشتراك ثابت</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-green-500/5 rounded-xl border border-green-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center font-bold text-sm">SA</div>
+                            <div>
+                                <p class="font-bold">Hyperpay</p>
+                                <p class="text-xs text-gray-500">اشتراك شهري + ~2.5% لكل معاملة</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-white">~120 ريال</p>
+                            <p class="text-xs text-gray-500">اشتراك ثابت</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-blue-500/5 border-blue-500/30">
+                <div class="flex justify-between items-center">
+                    <p class="font-bold text-blue-300">إجمالي التكاليف الشهرية</p>
+                    <div class="text-right">
+                        <p class="price-tag text-3xl text-blue-300">370470 ريال</p>
+                        <p class="text-xs text-gray-500">شامل الإدارة + بوابتا الدفع</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 7: Marketing Partnership -->
+<div class="slide" id="slide7">
+    <h2 class="text-5xl font-bold mb-8 gold-gradient text-center">شراكة النجاح (Marketing & Editing)</h2>
+    <div class="card bg-gold/5 border-gold/30 p-8">
+        <div class="flex justify-between items-center mb-8">
+            <div class="text-right">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="badge-revenue">مشاركة إيرادات</span>
+                </div>
+                <h3 class="text-3xl font-bold mb-2">25% من إيرادات الطلاب</h3>
+                <p class="text-gray-400">مقابل حزمة "النمو الشامل"  تبدأ بعد أول 50 طالب</p>
+            </div>
+            <div class="bg-gold text-black px-6 py-2 rounded-full font-bold">شراكة كاملة</div>
+        </div>
+        <div class="grid grid-cols-2 gap-8">
+            <ul class="space-y-4 text-lg">
+                <li> إدارة وتنسيق ملفات الـ PDF</li>
+                <li> مونتاج احترافي للفيديوهات التعليمية</li>
+                <li> إدارة الحملات التسويقية (المنشورات والتمويل)</li>
+            </ul>
+            <ul class="space-y-4 text-lg border-r border-white/10 pr-8">
+                <li> تحديثات مستمرة لواجهة المنصة</li>
+                <li> الدعم الفني المباشر للطلاب</li>
+                <li> الحد الأدنى لتفعيل النسبة: <strong>50 طالب</strong></li>
+            </ul>
+        </div>
+    </div>
+    <p class="mt-6 text-center text-gray-500 italic">"نحن نتحمل عبء التشغيل والتسويق لتتفرغ أنت للتدريس فقط."</p>
+</div>
+
+<!-- Slide 8: Payments -->
+<div class="slide" id="slide8">
+    <div class="grid grid-cols-2 gap-12 items-center">
+        <div>
+            <h2 class="text-5xl font-bold mb-6 gold-gradient">Regional Payment Solutions</h2>
+            <p class="text-gray-400 text-xl mb-8">تم رفض Stripe بسبب الرسوم العالية. قمنا بعمل Local Integrations تضمن أعلى سرعة وأقل عمولة.</p>
+            <div class="space-y-4">
+                <div class="flex items-center gap-6 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                    <div class="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center font-bold text-2xl">EG</div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl">Paymob</p>
+                        <p class="text-gray-500">معالجة فورية بالجنيه المصري</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400">~100 ريال/شهر</p>
+                        <p class="text-xs text-gray-500">+ 2.5% لكل معاملة</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6 p-4 bg-green-500/5 rounded-2xl border border-green-500/10">
+                    <div class="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center font-bold text-2xl">SA</div>
+                    <div class="flex-1">
+                        <p class="font-bold text-xl">Hyperpay</p>
+                        <p class="text-gray-500">معالجة فورية بالريال السعودي</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400">~120 ريال/شهر</p>
+                        <p class="text-xs text-gray-500">+ 2.5% لكل معاملة</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-blue-900/10 border-blue-500/30">
+            <p class="text-blue-400 italic font-bold mb-4 text-xl">"Sandbox environment is ready"</p>
+            <p class="text-gray-300 mb-6">كلا البوابتين تم اختبارهما بنجاح في بيئة الـ Sandbox. المنصة جاهزة للانتقال للوضع المباشر فور تفعيل المرحلة الأولى.</p>
+            <div class="p-4 bg-white/5 rounded-xl border border-white/10">
+                <p class="text-sm text-gray-400">رسوم بوابات الدفع مدرجة ضمن التكاليف الشهرية الثابتة  لا مفاجآت.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 9: Video Tech -->
+<div class="slide" id="slide9">
+    <h2 class="text-5xl font-bold mb-12 gold-gradient">Anti-Piracy Video Protection</h2>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="card border-red-500/20">
+            <h4 class="text-red-400 font-bold mb-4 text-xl">YouTube & Drive Issues</h4>
+            <p class="text-gray-400 mb-4 text-right">الروابط يمكن سرقتها بسهولة عبر Browser Extensions. بمجرد مشاركة الرابط يصبح محتواك متاحا للجميع مجانا.</p>
+            <span class="text-sm text-red-500 font-bold tracking-widest">Risk of Loss: 100%</span>
+        </div>
+        <div class="card border-green-500/20">
+            <h4 class="text-green-400 font-bold mb-4 text-xl">HLS Technology (Segmentation)</h4>
+            <p class="text-gray-400 mb-4 text-right">يتم تقسيم الفيديو لمئات الأجزاء المشفرة. لا يوجد "Single File" للسرقة. يحصل الطالب على Smooth Playback ويحصل القراصنة على روابط معطلة.</p>
+            <span class="text-sm text-green-500 font-bold tracking-widest">Revenue Protection: 100%</span>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 10: AI System -->
+<div class="slide" id="slide10">
+    <h2 class="text-5xl font-bold mb-12 gold-gradient">AI System: Your Content as Context</h2>
+    <div class="card relative overflow-hidden">
+        <div class="flex gap-12">
+            <div class="w-1/2">
+                <p class="text-2xl mb-6 font-light text-right">الذكاء الاصطناعي التقليدي يعطي إجابات عامة. نظام Elmanassa يستخدم مذكراتك الـ PDF كـ "Source of Truth".</p>
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-4"><span class="feature-tag">Vector DB</span> <span class="text-lg">قاعدة بيانات هندسية للمحتوى</span></li>
+                    <li class="flex items-center gap-4"><span class="feature-tag">OCR Pipeline</span> <span class="text-lg">قراءة النصوص والرسوم من الـ PDF</span></li>
+                    <li class="flex items-center gap-4"><span class="feature-tag">Strict Context</span> <span class="text-lg">إجابات دقيقة بناء على مادتك فقط</span></li>
+                </ul>
+            </div>
+            <div class="w-1/2 bg-black/40 rounded-xl p-8 border border-white/5" dir="ltr">
+                <p class="text-xs text-gray-500 mb-2 font-mono uppercase tracking-widest">OCR Extraction Trace:</p>
+                <p class="text-sm font-mono text-gold mb-1">> Scan: physics_ch4_scan.jpg</p>
+                <p class="text-sm font-mono text-gray-400 mb-1">> Extracting formulas & diagrams...</p>
+                <p class="text-sm font-mono text-green-400">> Question matched: "What is Ohm's Law?"</p>
+                <p class="text-sm font-mono text-white">> Answer: Derived from page 45 of your PDF.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 11: Real Numbers from Codebase -->
+<div class="slide" id="slide11">
+    <h2 class="text-5xl font-bold mb-10 gold-gradient">الأرقام الحقيقية من الكود</h2>
+    <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="card text-center border-gold/20">
+            <div class="price-tag text-5xl mb-1">60+</div>
+            <p class="text-gray-400 text-sm">API Endpoint نشط</p>
+        </div>
+        <div class="card text-center border-gold/20">
+            <div class="price-tag text-5xl mb-1">11</div>
+            <p class="text-gray-400 text-sm">وحدة برمجية متخصصة</p>
+        </div>
+        <div class="card text-center border-gold/20">
+            <div class="price-tag text-5xl mb-1">3</div>
+            <p class="text-gray-400 text-sm">لوحات تحكم (طالب / معلم / أدمن)</p>
+        </div>
+        <div class="card text-center border-gold/20">
+            <div class="price-tag text-5xl mb-1">500MB</div>
+            <p class="text-gray-400 text-sm">حد رفع الفيديو الواحد</p>
+        </div>
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+        <div class="card border-blue-500/20">
+            <h4 class="text-blue-400 font-bold mb-3">Video Security Stack</h4>
+            <ul class="space-y-2 text-sm text-gray-300">
+                <li> AES-128 تشفير كل جزء من الفيديو</li>
+                <li> Signed Token صالح 5 دقائق فقط</li>
+                <li> Watermark باسم وإيميل الطالب</li>
+                <li> تعطيل F12 وأدوات المطور</li>
+            </ul>
+        </div>
+        <div class="card border-green-500/20">
+            <h4 class="text-green-400 font-bold mb-3">Payment System</h4>
+            <ul class="space-y-2 text-sm text-gray-300">
+                <li> HMAC-SHA512 للتحقق من كل عملية</li>
+                <li> كارت + محفظة إلكترونية</li>
+                <li> نظام كوبونات وخصومات</li>
+                <li> تسجيل تلقائي بعد الدفع</li>
+            </ul>
+        </div>
+        <div class="card border-purple-500/20">
+            <h4 class="text-purple-400 font-bold mb-3">AI Conversations</h4>
+            <ul class="space-y-2 text-sm text-gray-300">
+                <li> محادثات متعددة الأدوار</li>
+                <li> حفظ تاريخ المحادثات</li>
+                <li> عزل بيانات كل مستخدم</li>
+                <li> Gemini API integration</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 12: Engineering Gap Comparison -->
+<div class="slide" id="slide12">
+    <h2 class="text-5xl font-bold mb-12 gold-gradient">لماذا نحن (The Engineering Gap)</h2>
+    <div class="grid grid-cols-2 gap-8">
+        <div class="card opacity-60">
+            <h4 class="text-red-400 font-bold mb-4 italic text-xl">المنصات التقليدية</h4>
+            <ul class="space-y-3 text-gray-400">
+                <li> فيديوهات يوتيوب (تسرق بسهولة)</li>
+                <li> ملفات درايف (روابط عامة)</li>
+                <li> لا يوجد ضغط للفيديو (تكاليف عالية)</li>
+                <li> دعم فني عام وغير مباشر</li>
+                <li> لا يوجد نظام إدارة حسابات مخصص</li>
+            </ul>
+        </div>
+        <div class="card border-gold/40">
+            <h4 class="text-gold font-bold mb-4 uppercase text-xl">منصة Elmanassa</h4>
+            <ul class="space-y-3 text-gray-200">
+                <li> نظام تشفير HLS (حماية 100%)</li>
+                <li> سيرفر خاص (تشفير طبقات البيانات)</li>
+                <li> ضغط آلي (توفير مادي ضخم)</li>
+                <li> SEIM TOOLS (مراقبة أمنية لحظية)</li>
+                <li> نظام إدارة حسابات وطلاب مخصص</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 13: Terms -->
+<div class="slide" id="slide13">
+    <h2 class="text-5xl font-bold mb-12 gold-gradient">Terms & Guarantees</h2>
+    <div class="space-y-4 max-w-4xl">
+        <div class="flex gap-6 p-5 rounded-2xl hover:bg-white/5 transition border border-white/5">
+            <div class="text-gold font-bold text-2xl">01</div>
+            <div class="text-right">
+                <p class="text-lg text-gray-300"><strong>Phase 1  2,800 ريال:</strong> تسليم الكود والوصول للـ Repository فور السداد. يشمل 60+ API + 3 لوحات تحكم + بوابتا الدفع.</p>
+            </div>
+        </div>
+        <div class="flex gap-6 p-5 rounded-2xl hover:bg-white/5 transition border border-white/5">
+            <div class="text-gold font-bold text-2xl">02</div>
+            <div class="text-right">
+                <p class="text-lg text-gray-300"><strong>Maintenance  370470 ريال/شهر:</strong> يشمل الإدارة التقنية + اشتراكات Paymob و Hyperpay. في حال التوقف تتحول المنصة لوضع "Unmanaged".</p>
+            </div>
+        </div>
+        <div class="flex gap-6 p-5 rounded-2xl hover:bg-white/5 transition border border-white/5">
+            <div class="text-gold font-bold text-2xl">03</div>
+            <div class="text-right">
+                <p class="text-lg text-gray-300"><strong>Marketing  25%:</strong> نسبة الإيرادات تبدأ بعد أول 50 طالب. هذا يجعل نجاحنا مرتبطا بنجاحك ونموك الفعلي.</p>
+            </div>
+        </div>
+        <div class="flex gap-6 p-5 rounded-2xl hover:bg-white/5 transition border border-white/5">
+            <div class="text-gold font-bold text-2xl">04</div>
+            <div class="text-right">
+                <p class="text-lg text-gray-300"><strong>Phase 2  1,600 ريال:</strong> تنتقل حقوق الملكية الفكرية بالكامل للعميل فور السداد. AI + Live Stream + Quiz + IP Ownership.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Slide 14: Summary -->
+<div class="slide" id="slide14">
+    <h2 class="text-6xl font-bold mb-10 text-center">Let's Build the Future</h2>
+    <div class="grid grid-cols-3 gap-8 mb-8">
+        <div class="card text-center border-gold/20">
+            <p class="text-gray-500 text-sm uppercase tracking-widest mb-2">NOW</p>
+            <p class="text-xl font-bold mb-2">Signing Contract</p>
+            <p class="text-gold text-sm">AI Activation Start</p>
+        </div>
+        <div class="card text-center border-gold/20">
+            <p class="text-gray-500 text-sm uppercase tracking-widest mb-2">WEEK 1-3</p>
+            <p class="text-xl font-bold mb-2">Final Testing</p>
+            <p class="text-gold text-sm">Server Handover</p>
+        </div>
+        <div class="card text-center bg-gold/10 border-gold/30">
+            <p class="text-gold text-sm uppercase tracking-widest mb-2">LAUNCH</p>
+            <p class="text-xl font-bold mb-2">Official Release</p>
+            <p class="text-white text-sm">Marketing Campaign Start</p>
+        </div>
+    </div>
+    <!-- Quick cost summary at bottom -->
+    <div class="grid grid-cols-3 gap-4">
+        <div class="flex items-center justify-between p-4 bg-yellow-500/5 rounded-2xl border border-yellow-500/20">
+            <div>
+                <span class="badge-one-time">مرة واحدة</span>
+                <p class="font-bold mt-1">Phase 1 + Phase 2</p>
+            </div>
+            <p class="price-tag text-2xl text-yellow-400">4,400 ريال</p>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-blue-500/5 rounded-2xl border border-blue-500/20">
+            <div>
+                <span class="badge-monthly">شهري</span>
+                <p class="font-bold mt-1">Ops + بوابتا الدفع</p>
+            </div>
+            <p class="price-tag text-2xl text-blue-400">370470 ريال</p>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-green-500/5 rounded-2xl border border-green-500/20">
+            <div>
+                <span class="badge-revenue">إيرادات</span>
+                <p class="font-bold mt-1">صافي إيراداتك</p>
+            </div>
+            <p class="price-tag text-2xl text-green-400">~72.5%</p>
+        </div>
+    </div>
+    <p class="text-center mt-6 text-gray-400 text-xl font-light">بناء Elmanassa ليس مجرد كود بل هو تأمين لمستقبل تعليمي ذكي.</p>
+</div>
+
+<div class="controls">
+    <button class="btn-nav" onclick="nextSlide()">التالي (Next)</button>
+    <button class="btn-nav" onclick="prevSlide()">السابق (Prev)</button>
+</div>
+
+<script>
+    let currentSlide = 1;
+    const totalSlides = 14;
+
+    function updateProgress() {
+        const progress = (currentSlide / totalSlides) * 100;
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('slideCounter').textContent = currentSlide + ' / ' + totalSlides;
+    }
+
+    function showSlide(n) {
+        document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+        document.getElementById('slide' + n).classList.add('active');
+        updateProgress();
+    }
+
+    function nextSlide() { if (currentSlide < totalSlides) { currentSlide++; showSlide(currentSlide); } }
+    function prevSlide() { if (currentSlide > 1) { currentSlide--; showSlide(currentSlide); } }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') nextSlide();
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') prevSlide();
+    });
+
+    updateProgress();
+</script>
+</body>
+</html>

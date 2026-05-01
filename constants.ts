@@ -1,5 +1,5 @@
 
-import { Course } from './types';
+import { Course } from './types/types';
 
 export const NAV_LINKS = [
   { name: 'الرئيسية', page: 'home' },
@@ -13,3 +13,6 @@ export const NAV_LINKS = [
 
 export const FILTER_LEVELS = ['مبتدئ', 'متوسط', 'متقدم', 'خبير', 'جميع المستويات'];
 export const FILTER_PRICES = ['مجاني', 'مدفوع', 'خصم خاص'];
+
+/** Fallback WhatsApp number used when the inquiry API fails. */
+export const WHATSAPP_FALLBACK_NUMBER = '966597750868';

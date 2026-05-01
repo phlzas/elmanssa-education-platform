@@ -16,6 +16,20 @@ export function placeOrder(data: {
     });
 }
 
+export function initiatePaymobPayment(data: {
+    subjectId: string;
+    paymentMethod: string;
+    couponCode?: string;
+    billingFullName?: string;
+    billingEmail?: string;
+    billingPhone?: string;
+}) {
+    return apiRequest("/payment/create", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
 export function getOrders() {
     return apiRequest("/orders");
 }
@@ -29,6 +43,10 @@ export function checkCoupon(data: { code: string; subjectId?: string }) {
         method: "POST",
         body: JSON.stringify(data),
     });
+}
+
+export function getInquiry(subjectId: string) {
+    return apiRequest(`/subjects/${subjectId}/inquiry`);
 }
 
 // ─── Compatibility wrappers (match old services/api.ts signatures) ───

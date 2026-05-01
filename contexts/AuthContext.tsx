@@ -9,16 +9,18 @@ export interface User {
     email: string;
     role: AccountType;
     avatar?: string;
+    phoneNumber?: string;
 }
 
 interface AuthContextType {
     user: User | null;
     isLoggedIn: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<{ requiresEmailVerification?: boolean; email?: string } | void>;
+    loginWithTokens: (data: { token: string; refreshToken: string; userId: string; name: string; email: string; role: string }) => void;
     signup: (name: string, email: string, password: string, role: AccountType, phoneNumber: string, nationalId: string) => Promise<void>;
     signupTeacher: (payload: {
         name: string; email: string; password: string; nationalId: string;
-        phoneNumber: string; yearsOfExperience: number; specialization?: string;
+        phoneNumber: string; yearsOfExperience?: number; specialization?: string;
         bio?: string; cvUrl?: string; avatarUrl?: string;
     }) => Promise<void>;
     logout: () => void;
@@ -67,6 +69,7 @@ function persistSession(data: any, fallbackName: string, fallbackEmail: string, 
         name: data.name || fallbackName,
         email: data.email || fallbackEmail,
         role: (data.role?.toLowerCase() as AccountType) || fallbackRole,
+        phoneNumber: data.phoneNumber || undefined,
     };
 }
 
@@ -99,6 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
+        // Email not verified — return signal to caller, don't throw
+        if (!res.ok && data.requiresEmailVerification) {
+            return { requiresEmailVerification: true, email: data.email || email };
+        }
         if (res.status === 401) throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة. تأكد من صحة بياناتك');
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل تسجيل الدخول'));
         setUser(persistSession(data, email.split('@')[0], email, 'student'));
@@ -113,12 +120,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (res.status === 400) throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من الحقول المطلوبة'));
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل إنشاء الحساب'));
-        setUser(persistSession(data, name, email, role));
+        // Don't set user — account needs email verification first
     }, []);
 
     const signupTeacher = useCallback(async (payload: {
         name: string; email: string; password: string; nationalId: string;
-        phoneNumber: string; yearsOfExperience: number; specialization?: string;
+        phoneNumber: string; yearsOfExperience?: number; specialization?: string;
         bio?: string; cvUrl?: string; avatarUrl?: string;
     }) => {
         const res = await fetch(`${API_BASE}/auth/signup/teacher`, {
@@ -129,7 +136,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (res.status === 400) throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من جميع الحقول المطلوبة'));
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل إنشاء حساب المدرس'));
-        setUser(persistSession(data, payload.name, payload.email, 'teacher'));
+        // Don't set user — account needs email verification first
+    }, []);
+
+    const loginWithTokens = useCallback((data: { token: string; refreshToken: string; userId: string; name: string; email: string; role: string }) => {
+        setUser(persistSession(data, data.name, data.email, data.role as AccountType));
     }, []);
 
     const logout = useCallback(() => {
@@ -151,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, signup, signupTeacher, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, loginWithTokens, signup, signupTeacher, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );
