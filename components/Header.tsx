@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Page } from '../App';
+import { Page, prefetchPage } from '../App';
 import { NAV_LINKS } from '../constants';
 import Logo from './Logo';
 import { useAuth } from '../contexts/AuthContext';
@@ -166,6 +166,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
               <button
                 key={link.name}
                 onClick={() => onNavigate(link.page as Page)}
+                onMouseEnter={() => prefetchPage(link.page)}
+                onFocus={() => prefetchPage(link.page)}
                 className={`cursor-pointer text-base font-semibold transition-colors duration-200 px-2 py-1 rounded-md
                   ${currentPage === link.page
                     ? 'text-[#4F8751]'

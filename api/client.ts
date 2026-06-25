@@ -8,11 +8,38 @@ function extractErrorMessage(body: any, status: number): string {
         body?.message ||
         body?.title ||
         `Request failed (${status})`;
-    // Sanitize error message to prevent XSS via malicious API responses
     return sanitizeErrorMessage(rawMessage);
 }
 
-// Prevent multiple simultaneous refresh calls
+// ── In-memory GET cache ───────────────────────────────────────────────────────
+// Caches public (unauthenticated) GET responses for a short TTL so navigating
+// back to the home page doesn't re-hit the API on every visit.
+interface CacheEntry { data: any; expiresAt: number }
+const _cache = new Map<string, CacheEntry>();
+
+/** TTLs in milliseconds for specific endpoint prefixes */
+const CACHE_TTLS: Array<[string, number]> = [
+    ['/subjects/popular', 5 * 60 * 1000],   // popular courses — 5 min
+    ['/subjects',         2 * 60 * 1000],   // course list — 2 min
+    ['/content/stats',    5 * 60 * 1000],   // homepage stats — 5 min
+];
+
+function getCacheTtl(endpoint: string): number | null {
+    for (const [prefix, ttl] of CACHE_TTLS) {
+        if (endpoint.startsWith(prefix)) return ttl;
+    }
+    return null;
+}
+
+/** Invalidate all cached entries (call after mutations). */
+export function invalidateCache(prefix?: string) {
+    if (!prefix) { _cache.clear(); return; }
+    for (const key of _cache.keys()) {
+        if (key.startsWith(prefix)) _cache.delete(key);
+    }
+}
+
+// ── Token refresh ─────────────────────────────────────────────────────────────
 let refreshPromise: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
@@ -47,7 +74,6 @@ async function tryRefresh(): Promise<boolean> {
 
 /**
  * Low-level authenticated fetch with token refresh support.
- * Returns the raw Response for flexibility (streaming, custom parsing, etc.).
  */
 export async function authedFetch(url: string, options: RequestInit = {}, _retry = false): Promise<Response> {
     const token = getToken();
@@ -58,23 +84,15 @@ export async function authedFetch(url: string, options: RequestInit = {}, _retry
         ...((options.headers as Record<string, string>) || {}),
     };
 
-    // Don't set Content-Type for FormData - browser will set it with boundary
     if (!isFormData && !headers["Content-Type"]) {
         headers["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
+    const response = await fetch(url, { ...options, headers });
 
-    // Silent refresh on 401 — try once
     if (response.status === 401 && !_retry) {
         const refreshed = await tryRefresh();
-        if (refreshed) {
-            return authedFetch(url, options, true);
-        }
-        // Refresh failed — full logout
+        if (refreshed) return authedFetch(url, options, true);
         clearAllTokens();
         window.dispatchEvent(new CustomEvent("auth:expired"));
         const err = new Error("انتهت صلاحية الجلسة");
@@ -94,10 +112,22 @@ export async function authedFetch(url: string, options: RequestInit = {}, _retry
 }
 
 /**
- * High-level JSON API request with automatic token refresh and error handling.
- * Returns parsed JSON data.
+ * High-level JSON API request with automatic token refresh, error handling,
+ * and short-lived in-memory caching for public GET endpoints.
  */
 export async function apiRequest(endpoint: string, options: RequestInit = {}, _retry = false): Promise<any> {
+    const method = (options.method ?? "GET").toUpperCase();
+    const isGet = method === "GET";
+    const ttl = isGet ? getCacheTtl(endpoint) : null;
+
+    // Return cached data if still fresh
+    if (ttl !== null) {
+        const cached = _cache.get(endpoint);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.data;
+        }
+    }
+
     const response = await authedFetch(`${API_BASE}${endpoint}`, options, _retry);
 
     if (!response.ok) {
@@ -107,5 +137,12 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}, _r
         throw err;
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // Store in cache for eligible GET endpoints
+    if (ttl !== null) {
+        _cache.set(endpoint, { data, expiresAt: Date.now() + ttl });
+    }
+
+    return data;
 }

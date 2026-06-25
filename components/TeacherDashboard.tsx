@@ -49,6 +49,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
     // API data
     const [apiStats, setApiStats] = useState<any>(null);
     const [apiStudents, setApiStudents] = useState<any[]>([]);
+    const [apiError, setApiError] = useState<string | null>(null);
     const [apiActivities, setApiActivities] = useState<any[]>([]);
     const [studentsLoading, setStudentsLoading] = useState(false);
 
@@ -65,6 +66,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
     // ── Load subjects + stats ──────────────────────────────────────────────
     useEffect(() => {
         const loadData = async () => {
+            setApiError(null);
             setIsLoadingData(true);
             try {
                 const ok = await pingTeacherAuth();
@@ -129,7 +131,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                     }
                 }
             } catch (err) {
-                console.error('Error loading teacher data', err);
+                setApiError('فشل تحميل البيانات');
             }
             setIsLoadingData(false);
         };
@@ -147,7 +149,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                     setApiStudents(data.map((st: any) => ({ name: st.name || 'طالب', email: st.email || '', avatar: '', id: st.id })));
                 }
             })
-            .catch(() => {})
+            .catch(() => { setApiError('فشل تحميل قائمة الطلاب'); })
             .finally(() => setStudentsLoading(false));
     }, [activeNav]);
 
@@ -433,6 +435,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onNavigate, initial
                 <div className="text-center">
                     <div className="w-12 h-12 rounded-full border-[3px] border-amber-500/15 border-t-amber-500 animate-spin mx-auto mb-4" />
                     <div className="text-slate-200 text-[15px] font-semibold">جاري تحميل البيانات...</div>
+                </div>
+            </div>
+        );
+    }
+
+    if (apiError && subjects.length === 0) {
+        return (
+            <div dir="rtl" className="flex min-h-screen bg-[#0a1628] font-cairo items-center justify-center">
+                <div className="text-center max-w-sm">
+                    <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-7 h-7 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                    </div>
+                    <p className="text-slate-400 text-sm mb-4">{apiError}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="font-cairo px-4 py-2 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-amber-500/25 transition-colors duration-150"
+                    >
+                        إعادة المحاولة
+                    </button>
                 </div>
             </div>
         );

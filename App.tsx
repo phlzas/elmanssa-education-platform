@@ -76,6 +76,22 @@ const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const VerifyEmailPage = React.lazy(() => import('./components/VerifyEmailPage'));
 const ForgotPasswordPage = React.lazy(() => import('./components/ForgotPasswordPage'));
 
+// ── Prefetch helpers ──────────────────────────────────────────────────────────
+// Call these on hover/focus to preload JS chunks + warm the API cache before
+// the user actually clicks, so navigation feels instant.
+const prefetchMap: Record<string, () => void> = {
+  courses:   () => { import('./components/CoursesPage'); },
+  login:     () => { import('./components/LoginPage'); },
+  signup:    () => { import('./components/SignUpForm'); },
+  dashboard: () => { import('./components/StudentDashboard'); },
+  'teacher-dashboard': () => { import('./components/TeacherDashboard'); },
+  'admin-dashboard':   () => { import('./components/AdminDashboard'); },
+};
+
+export function prefetchPage(page: string) {
+  prefetchMap[page]?.();
+}
+
 export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'payment-failed' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard' | 'verify-email' | 'forgot-password';
 export type AccountType = 'student' | 'teacher' | 'admin';
 

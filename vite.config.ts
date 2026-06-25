@@ -32,31 +32,28 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      // hls.js is ~162kB gzipped and only loads on /watch — suppress the warning
+      // Target modern browsers — smaller output, no legacy polyfills
+      target: 'es2020',
+      // Split CSS per chunk so pages only load the CSS they need
+      cssCodeSplit: true,
+      // Raise warning threshold (hls.js is large by design)
       chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
+          // Fine-grained chunk splitting for better caching
           manualChunks(id) {
             // Plyr — only loaded on /watch
-            if (id.includes('node_modules/plyr')) {
-              return 'vendor-plyr';
-            }
-            // hls.js — only loaded on /watch via SecureVideoPlayer (dynamic import)
-            if (id.includes('node_modules/hls.js')) {
-              return 'vendor-hls';
-            }
-            // React ecosystem (react, react-dom, scheduler)
+            if (id.includes('node_modules/plyr')) return 'vendor-plyr';
+            // hls.js — only loaded on /watch via dynamic import
+            if (id.includes('node_modules/hls.js')) return 'vendor-hls';
+            // React core — changes rarely, long-lived cache
             if (
               id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/scheduler/')
-            ) {
-              return 'vendor-react';
-            }
+            ) return 'vendor-react';
             // Everything else in node_modules → shared vendor chunk
-            if (id.includes('node_modules')) {
-              return 'vendor';
-            }
+            if (id.includes('node_modules')) return 'vendor';
           }
         }
       }

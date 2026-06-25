@@ -66,6 +66,7 @@ const PopularCourses: React.FC<PopularCoursesProps> = ({ onNavigate }) => {
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // Cache is handled in api/client.ts — this just fires the request
     getPopularCourses()
       .then((json: unknown) => {
         const raw = Array.isArray(json) ? json : ((json as { data?: unknown })?.data ?? []);

@@ -29,29 +29,35 @@
   <!-- Theme Color -->
   <meta name="theme-color" content="#034289" />
 
-  <!-- Tailwind CSS is processed via PostCSS (see tailwind.config.js) -->
+  <!-- Preconnect to API so the first request has no DNS/TCP overhead -->
+  <link rel="preconnect" href="https://api.elmanssa.com" crossorigin />
+  <link rel="dns-prefetch" href="https://api.elmanssa.com" />
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet">
+  <!-- Google Fonts — preconnect first, then load async to avoid render-blocking -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Load font non-blocking: media="print" trick swaps to "all" once loaded -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+    media="print"
+    onload="this.media='all'"
+  />
+  <!-- Fallback for no-JS -->
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  </noscript>
 
   <style>
+    /* Show Cairo immediately once it loads; fall back to system Arabic font */
     body {
-      font-family: 'Cairo', sans-serif;
-    }
-
-    /* Hide scrollbar while maintaining functionality */
-    html {
-      scroll-behavior: smooth;
-    }
-
-    /* Improve text rendering */
-    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
+    }
+    html {
+      scroll-behavior: smooth;
     }
   </style>
 

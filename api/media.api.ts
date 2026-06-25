@@ -227,28 +227,46 @@ export async function uploadFilesParallel(
 /**
  * Polls the backend until HLS transcoding is complete for a video.
  * Calls onReady() when hlsReady becomes true.
- * Silently stops after maxAttempts (default ~2 min).
+ * Silently stops after maxAttempts (default ~10 min at 15s intervals).
+ * Guards against duplicate pollers for the same mediaFileId.
  */
+const _hlsPolling = new Set<string>();
+
 export function waitForHlsReady(
   mediaFileId: string,
   onReady: () => void,
-  intervalMs = 5000,
-  maxAttempts = 24
+  intervalMs = 15000,
+  maxAttempts = 40
 ): void {
+  // Don't start a second poller if one is already running for this file
+  if (_hlsPolling.has(mediaFileId)) return;
+  _hlsPolling.add(mediaFileId);
+
   let attempts = 0;
   const check = async () => {
     attempts++;
     try {
-      const res = await getMediaFile(mediaFileId);
-      if (res.data?.hlsReady) {
-        onReady();
-        return;
+      // Bypass the GET cache so we always get a fresh hlsReady value
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/media/${mediaFileId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data?.hlsReady || json.hlsReady) {
+          _hlsPolling.delete(mediaFileId);
+          onReady();
+          return;
+        }
       }
     } catch {
       // network hiccup — keep polling
     }
     if (attempts < maxAttempts) {
       setTimeout(check, intervalMs);
+    } else {
+      // Give up — remove from tracking set
+      _hlsPolling.delete(mediaFileId);
     }
   };
   setTimeout(check, intervalMs);

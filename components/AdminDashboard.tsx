@@ -165,6 +165,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     const [form, setForm] = useState<any>({});
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [prevTab, setPrevTab] = useState<Tab | null>(null);
     const [teachersList, setTeachersList] = useState<any[]>([]);
     const [studentsList, setStudentsList] = useState<any[]>([]);
     const [subjectsList, setSubjectsList] = useState<any[]>([]);
@@ -175,11 +177,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     };
 
     useEffect(() => {
-        getAdminStats().then(r => setStats(r?.data || r)).catch(() => {});
+        setError(null);
+        getAdminStats().then(r => setStats(r?.data || r)).catch(() => {
+            setStats(null);
+            setError('فشل تحميل الإحصائيات');
+        });
     }, []);
 
     const loadTab = useCallback(async (t: Tab, p = 1) => {
         setLoading(true);
+        setError(null);
         try {
             let r: any;
             if (t === 'students') r = await getStudents(p);
@@ -189,7 +196,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             else if (t === 'streams') r = await getAdminStreams(p);
             else if (t === 'enrollments') r = await getEnrollments(p);
             if (r) { setData(r.data || []); setTotal(r.total || 0); }
-        } catch { }
+        } catch {
+            setData([]);
+            setError('فشل تحميل البيانات');
+        }
         setLoading(false);
     }, []);
 
@@ -351,7 +361,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
             <main className="p-6">
                 {/* ── Overview ── */}
-                {tab === 'overview' && stats && (
+                {tab === 'overview' && !error && stats && (
                     <div>
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3.5 mb-7">
                             <StatCard label="الطلاب" value={stats.students ?? '—'} color="#38bdf8" />
@@ -366,6 +376,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                                 <Btn key={t.key} onClick={() => setTab(t.key)} outline color={t.color}>{t.label}</Btn>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* ── Error State ── */}
+                {tab === 'overview' && error && (
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                        <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+                            <svg className="w-7 h-7 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <p className="text-slate-400 text-sm">{error}</p>
+                        <button
+                            onClick={() => {
+                                setError(null);
+                                getAdminStats().then(r => setStats(r?.data || r)).catch(() => {
+                                    setStats(null);
+                                    setError('فشل تحميل الإحصائيات');
+                                });
+                            }}
+                            className="font-cairo px-4 py-2 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-amber-500/25 transition-colors duration-150"
+                        >
+                            إعادة المحاولة
+                        </button>
                     </div>
                 )}
 
@@ -390,6 +424,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                             {canCreate && <Btn onClick={openCreate}>+ إضافة</Btn>}
                         </div>
 
+                        {error && (
+                            <div className="flex flex-col items-center justify-center py-10 gap-3 bg-white/[0.02] border border-white/[0.07] rounded-2xl">
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                </div>
+                                <p className="text-slate-400 text-sm">{error}</p>
+                                <button
+                                    onClick={() => loadTab(tab, page)}
+                                    className="font-cairo px-4 py-2 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl text-sm font-semibold cursor-pointer hover:bg-amber-500/25 transition-colors duration-150"
+                                >
+                                    إعادة المحاولة
+                                </button>
+                            </div>
+                        )}
+                        {!error && (
                         <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
                             {/* Students */}
                             {tab === 'students' && (
@@ -506,6 +557,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                                 </Table>
                             )}
                         </div>
+                        )}
 
                         {/* Pagination */}
                         {total > 20 && !search && (

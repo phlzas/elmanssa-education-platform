@@ -652,7 +652,9 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                                         {lec.uploadStatus === 'success' && (
                                                             <div style={{
                                                                 background: 'rgba(10,18,35,0.7)',
-                                                                border: `1px solid ${lec.hlsReady ? 'rgba(34,197,94,0.2)' : 'rgba(251,191,36,0.2)'}`,
+                                                                border: 'rgba(34,197,94,0.2)',
+                                                                borderStyle: 'solid',
+                                                                borderWidth: '1px',
                                                                 borderRadius: '10px', padding: '10px 12px',
                                                                 display: 'flex', flexDirection: 'column', gap: '6px',
                                                                 marginBottom: '8px',
@@ -662,7 +664,7 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
                                                                             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                                                                         </svg>
-                                                                        <span style={{ fontSize: '12px', color: '#22c55e' }}>تم الرفع</span>
+                                                                        <span style={{ fontSize: '12px', color: '#22c55e' }}>تم الرفع بنجاح</span>
                                                                     </div>
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                         <span style={{ fontSize: '12px', color: '#94a3b8', direction: 'ltr' }}>{lec.videoFileName || lec.title}</span>
@@ -672,34 +674,6 @@ const SubjectModal: React.FC<SubjectModalProps> = ({
                                                                         <button onClick={() => videoInputRefs.current[`${level.id}-${lec.id}`]?.click()} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '6px', padding: '3px 8px', color: '#94a3b8', fontSize: '11px', cursor: 'pointer' }}>تغيير</button>
                                                                     </div>
                                                                 </div>
-                                                                {/* HLS processing indicator */}
-                                                                {!lec.hlsReady && (
-                                                                    <div style={{
-                                                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                                                        fontSize: '11px', color: '#fbbf24',
-                                                                        background: 'rgba(251,191,36,0.08)',
-                                                                        borderRadius: '6px', padding: '4px 8px',
-                                                                    }}>
-                                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                                                            style={{ animation: 'spin 1s linear infinite', flexShrink: 0 }}>
-                                                                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" strokeLinecap="round" />
-                                                                        </svg>
-                                                                        جاري معالجة الفيديو للبث... (يمكنك المتابعة)
-                                                                    </div>
-                                                                )}
-                                                                {lec.hlsReady && (
-                                                                    <div style={{
-                                                                        display: 'flex', alignItems: 'center', gap: '6px',
-                                                                        fontSize: '11px', color: '#22c55e',
-                                                                        background: 'rgba(34,197,94,0.08)',
-                                                                        borderRadius: '6px', padding: '4px 8px',
-                                                                    }}>
-                                                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                                            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                                                                        </svg>
-                                                                        جاهز للبث
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         )}
 
