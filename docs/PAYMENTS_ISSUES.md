@@ -195,6 +195,12 @@
   sent to Paymob (`:69`), and free/low-price subjects can still be sent to Paymob with amount 0.
 - **Fix:** Set `Valid = true` server-side (or fix the client to read `valid`), validate
   `0 < DiscountPct <= 100` and `totalAmount > 0`, and reject free subjects in `CreatePaymentAsync`.
+- **Status:** ✅ Fixed `dd44267` + `5d72e10` — `ValidateCouponAsync` sets `Valid = true` for valid coupons;
+  checkout reads `data?.valid` (`components/CheckoutPage.tsx:67`, `5d72e10`); `CreatePaymentAsync` clamps
+  `0 < DiscountPct <= 100`, throws `INVALID_DISCOUNT` when `totalAmount <= 0` (no negative/zero amount to
+  Paymob), and rejects free subjects with `SUBJECT_IS_FREE`. Coupon `CurrentUses` increments atomically at
+  the webhook only on successful enrollment. Remaining: subject/category coupon binding needs a coupon
+  admin UI + schema (deferred from BE10).
 
 ### R10. (Medium) Stale/mixed payment model: Paymob self-serve still live despite "purchase disabled"
 - **Severity:** Medium
@@ -251,7 +257,7 @@
 | R6 | No webhook idempotency / enrollment unique index (race) | High | 🟡 Partial `c9c247b` |
 | R7 | Hardcoded production URLs + WhatsApp number | Medium | ☐ |
 | R8 | Post-payment dead end → Hero + fabricated order number | Medium | ☐ |
-| R9 | Coupon flow broken + no discount cap (negative amount) | Medium | ☐ |
+| R9 | Coupon flow broken + no discount cap (negative amount) | Medium | ✅ Fixed `dd44267` `5d72e10` |
 | R10 | Two parallel sales channels (Paymob live + WhatsApp) | Medium | ☐ |
 | R11 | LocalStorage sync data loss on partial success | Medium | ☐ |
 | R12 | No published-status gate on purchasable subjects | Medium | ✅ Fixed `8af3a83` |

@@ -345,6 +345,12 @@
 - **Impact:** Unlimited coupon reuse on any subject; validation works for drafts.
 - **Fix:** Enforce MaxUses/CurrentUses atomically at payment; bind coupons to subjects/categories;
   require published subject; clamp `0 < DiscountPct <= 100` (see PAYMENTS_ISSUES.md R9).
+- **Status:** ✅ Fixed `dd44267` — `ValidateCouponAsync` now rejects exhausted coupons (MaxUses/CurrentUses,
+  Arabic message), clamps `0 < DiscountPct <= 100`, and the subject overload requires `Status == "published"`.
+  `CreatePaymentAsync` throws `SUBJECT_IS_FREE` for free subjects, `COUPON_USAGE_EXHAUSTED` when the limit is
+  reached, and `INVALID_DISCOUNT` when `totalAmount <= 0`. Coupon consumption is atomic at the Paymob webhook
+  (guarded `ExecuteUpdateAsync`, idempotent per order). Subject/category **binding** deferred — no coupon
+  admin/seed creation path exists to set a binding; needs a schema + admin UI first (tracked under PAYMENTS R9).
 
 ### BE11. (Low) Dead/disabled purchase flow
 - **Severity:** Low
@@ -437,7 +443,7 @@
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ✅ Fixed `8af3a83` |
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ✅ Fixed `4e0db9a` |
-| BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ☐ |
+| BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ✅ Fixed `dd44267` |
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ☐ |
 | BE12 | GetUserId throws → 500 | Low | ☐ |
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ☐ |
