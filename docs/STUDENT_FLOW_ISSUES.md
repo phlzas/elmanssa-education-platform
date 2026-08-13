@@ -401,6 +401,9 @@
   `DTOs/OrderDTO.cs:60-66`
 - **Impact:** Frontend must join catalog data; enrolled-but-unpublished subjects invisible in progress counts.
 - **Fix:** Include subject title + status.
+- **Status:** ✅ Fixed `c48aeb4` — `EnrollmentDTO` gains `SubjectTitle`/`SubjectStatus` (via the `Subject`
+  nav; stays null for legacy `CourseId` enrollments) and `SubjectProgressDTO` gains `Status`, so the
+  frontend no longer has to join catalog data to render enrollment/progress context.
 
 ### BE16. (Low) `StudentsCount` is a manually-maintained denormalized counter
 - **Severity:** Low
@@ -462,5 +465,5 @@
 | BE12 | GetUserId throws → 500 | Low | ✅ Fixed `627534e` |
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ✅ Fixed `a6c1e09` |
 | BE14 | BotDetection bypass / incomplete coverage | Low | ✅ Fixed `9833d5c` |
-| BE15 | Enrollment/stat responses lack subject context | Low | ☐ |
+| BE15 | Enrollment/stat responses lack subject context | Low | ✅ Fixed `c48aeb4` |
 | BE16 | StudentsCount denormalized counter drifts | Low | ☐ |
