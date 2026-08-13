@@ -39,6 +39,10 @@
 - **Fix:** Remove the GET DB-update branch entirely (the POST path is the only Paymob-authorized
   channel), or require a verified HMAC with constant-time compare. Validate `amount_cents` and
   `merchant_order_id` against the persisted transaction.
+- **Status:** ✅ Fixed in backend repo commit `1b82527` — webhook is now `[HttpPost("webhook")]`
+  only; the GET branch (unverified query-param enrollment + accounting write) was removed. Browser
+  redirects still work via the HMAC-verified `/payment/callback`. Residual: amount verification (R2)
+  and idempotency (R6) still open.
 
 ### R2. (High) No amount verification in webhook success path
 - **Severity:** High
@@ -229,7 +233,7 @@
 
 | ID | Issue | Severity | Status |
 |----|-------|----------|--------|
-| R1 | **GET /webhook enrollment bypass (HMAC never verified)** | **Critical** | ☐ |
+| R1 | **GET /webhook enrollment bypass (HMAC never verified)** | **Critical** | ✅ Fixed `1b82527` |
 | R2 | No amount verification in webhook success path | High | ☐ |
 | R3 | No refund/void/pending handling | High | ☐ |
 | R4 | Teacher accounting tampering (amounts, PKs, destructible rows) | High | ☐ |
