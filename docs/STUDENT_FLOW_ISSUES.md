@@ -198,6 +198,9 @@
   revenue stat. (Full payment-flow analysis in PAYMENTS_ISSUES.md R1.)
 - **Fix:** Remove the GET DB-mutation branch entirely (the `/callback` endpoint already handles
   browser redirects with HMAC) OR verify the HMAC over the exact Paymob field set before any DB change.
+- **Status:** ✅ Fixed `1b82527` (webhook is now POST-only; GET branch deleted, JSON body required,
+  HMAC verified downstream in `ProcessServerCallbackAsync`). Residuals: R2 (amount verification),
+  R6 (enrollment idempotency) still open — tracked in PAYMENTS_ISSUES.md.
 
 ### BE2. (Critical) No enrollment/ownership check on any media delivery endpoint (IDOR)
 - **Severity:** Critical
@@ -213,6 +216,10 @@
 - **Fix:** In every delivery + token endpoint, verify
   `Enrollments.AnyAsync(e => e.UserId == userId && e.SubjectId == media.SubjectId)` (and subject
   published); tie token issuance to that check.
+- **Status:** ✅ Fixed `318b3d2` (all read endpoints gated: `{id}`/`token`, 3× HLS, subject & lecture
+  listings, `download`/`stream`/`view`. Gate = admin bypass, else teacher-of-subject OR enrolled in
+  owning subject; subject resolved via `MediaFile.SubjectId` → `Lecture.Level.SubjectId`; unattached
+  media denied). Residuals: published-subject gate is BE3/BE7, still open.
 
 ### BE3. (High) Draft subjects (full curriculum, media metadata, stream URLs) are public
 - **Severity:** High
