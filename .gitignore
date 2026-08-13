@@ -2,3 +2,5 @@ node_modules
 .*
 dist
 *.py
+# Nested git repository with its own remote (github.com/Adel-abc/elmanassa_backend)
+elmanassa_backend/
