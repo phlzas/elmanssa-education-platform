@@ -390,6 +390,10 @@
   from the Origin check); UA blocklist + Origin check are cosmetic
 - **Impact:** Not security; documents viewable by scripts with a UA + Origin header.
 - **Fix:** Treat as defense-in-depth only; rely on BE2 enforcement.
+- **Status:** ✅ Fixed `9833d5c` — `view/` added to `ProtectedPrefixes` (was the only delivery prefix
+  missing); `/hls/` keeps its intentional Origin exemption (player key requests). Per the fix
+  directive this remains defense-in-depth only — real access control is BE2 (`318b3d2`), which
+  gates every delivery endpoint on admin/teacher/enrollment.
 
 ### BE15. (Low) Enrollment/stat responses lack context
 - **Severity:** Low
@@ -457,6 +461,6 @@
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ✅ Fixed `182b851` |
 | BE12 | GetUserId throws → 500 | Low | ✅ Fixed `627534e` |
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ✅ Fixed `a6c1e09` |
-| BE14 | BotDetection bypass / incomplete coverage | Low | ☐ |
+| BE14 | BotDetection bypass / incomplete coverage | Low | ✅ Fixed `9833d5c` |
 | BE15 | Enrollment/stat responses lack subject context | Low | ☐ |
 | BE16 | StudentsCount denormalized counter drifts | Low | ☐ |
