@@ -472,4 +472,3 @@
 | BE14 | BotDetection bypass / incomplete coverage | Low | ✅ Fixed `9833d5c` |
 | BE15 | Enrollment/stat responses lack subject context | Low | ✅ Fixed `c48aeb4` |
 | BE16 | StudentsCount manually-maintained denormalized counter | Low | ✅ Fixed `b47f756` |
-| BE16 | StudentsCount denormalized counter drifts | Low | ☐ |
