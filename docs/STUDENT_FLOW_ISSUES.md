@@ -282,6 +282,9 @@
 - **Impact:** Free access to priced content; enrollment into unpublished/draft subjects (content then
   reachable via BE2).
 - **Fix:** Require `subject.Status == "published"`, then free iff `subject.Price == 0 || subject.Status == "free"`.
+- **Status:** ✅ Fixed `679750b` (`enroll-free` now 403s `NOT_PUBLISHED` unless
+  `subject.Status == "published"`, then keeps the `NOT_FREE` guard — free iff
+  `Price == 0 || Status == "free"`). Residuals: paid-enroll published gate is BE8/R12, still open.
 
 ### BE8. (Medium) Paid enrollment paths don't increment StudentsCount; no published gate on payment
 - **Severity:** Medium
@@ -403,7 +406,7 @@
 | BE4 | HLS signed-token vs JWT query-param conflict | High | ☐ |
 | BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ☐ |
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
-| BE7 | Broken "free" guard + no published check in enroll-free | Medium | ☐ |
+| BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ☐ |
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ☐ |
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ☐ |
