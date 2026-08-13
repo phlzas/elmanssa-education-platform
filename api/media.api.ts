@@ -52,7 +52,7 @@ export async function getSignedStreamToken(mediaFileId: string): Promise<string>
 
 /** Returns the HLS m3u8 URL with a signed token embedded. */
 export function getHlsUrl(mediaFileId: string, signedToken: string): string {
-  return `${API_BASE}/media/hls/${mediaFileId}/index.m3u8?st=${encodeURIComponent(signedToken)}`;
+  return `${API_BASE}/media/hls/${mediaFileId}/index.m3u8?sig=${encodeURIComponent(signedToken)}`;
 }
 
 /** Returns an authenticated URL for viewing/downloading a document */
