@@ -64,7 +64,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
         try {
             setCouponError('');
             const data = await validateCoupon(couponCode, course?.guidId || courseId.toString());
-            if (data?.isValid) {
+            if (data?.valid) {
                 setCouponApplied(true);
                 const discAmt = data.discountAmount || (originalPrice * ((data.discountPercentage || 15) / 100));
                 setDiscountAmount(discAmt);
