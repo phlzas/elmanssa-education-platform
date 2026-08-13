@@ -375,10 +375,14 @@
 ### BE13. (Low) Hardcoded WhatsApp number + no inquiry tracking
 - **Severity:** Low
 - **Location:** `Controllers/SubjectsController.cs:243-288` (hardcoded `+966597750868` at 257;
-  message template 269; `AllowAnonymous`; no status filter; **no DB write**)
+  message template 269; `AllowAnonymous`; published-filter already present; **no DB write**)
 - **Impact:** Inquiries always go to one hardcoded number regardless of teacher; no funnel data;
   draft subjects inquirable.
 - **Fix:** Use the teacher/subject-configured number; persist inquiry events; filter published.
+- **Status:** ✅ Fixed `a6c1e09` — `GetInquiry` now uses the teacher's registered `User.PhoneNumber`
+  (fallback `+966597750868` for legacy rows), persists an `Inquiry` row per inquiry-details request
+  (new `Inquiries` table + migration `AddInquiryTracking`; best-effort — a logging failure never
+  breaks the inquiry response). The published-only filter already existed before this fix.
 
 ### BE14. (Low) BotDetection bypass / incomplete coverage
 - **Severity:** Low
@@ -452,7 +456,7 @@
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ✅ Fixed `dd44267` |
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ✅ Fixed `182b851` |
 | BE12 | GetUserId throws → 500 | Low | ✅ Fixed `627534e` |
-| BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ☐ |
+| BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ✅ Fixed `a6c1e09` |
 | BE14 | BotDetection bypass / incomplete coverage | Low | ☐ |
 | BE15 | Enrollment/stat responses lack subject context | Low | ☐ |
 | BE16 | StudentsCount denormalized counter drifts | Low | ☐ |
