@@ -314,6 +314,10 @@
   draft subjects.
 - **Fix:** Increment `StudentsCount` in every enrollment path (or derive it with a count query);
   validate `Status == "published"` in `CreatePaymentAsync`.
+- **Status:** ✅ Fixed `8af3a83` — `PaymobService.CreatePaymentAsync` rejects non-published subjects
+  (`SUBJECT_NOT_PUBLISHED` → 403); the Paymob webhook enrollment path now increments
+  `subject.StudentsCount` (matching the free/admin paths); `GetInquiry` returns 404 for non-published
+  subjects (R12 companion fix).
 
 ### BE9. (Medium) Dead legacy Course layer + title-based migration/progress mapping
 - **Severity:** Medium
@@ -426,7 +430,7 @@
 | BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ✅ Fixed `e7e3dfb` |
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
-| BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ☐ |
+| BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ✅ Fixed `8af3a83` |
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ☐ |
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ☐ |
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ☐ |

@@ -94,6 +94,9 @@
 - **Problem:** Draft/unpublished subjects are purchasable and queryable; students can pay for content
   that isn't live. (`enroll-free` instead *requires* `Status == "free"` — see STUDENT_FLOW_ISSUES BE7.)
 - **Fix:** Add `subject.Status == "published"` checks in `CreatePaymentAsync` and `GetInquiry`.
+- **Status:** ✅ Fixed `8af3a83` — `PaymobService.CreatePaymentAsync` throws `SUBJECT_NOT_PUBLISHED`
+  (→ 403) for non-published subjects; `SubjectsController.GetInquiry` returns 404 for non-published
+  subjects. (`enroll-free` already had its own BE7 gate.)
 
 ---
 
@@ -251,7 +254,7 @@
 | R9 | Coupon flow broken + no discount cap (negative amount) | Medium | ☐ |
 | R10 | Two parallel sales channels (Paymob live + WhatsApp) | Medium | ☐ |
 | R11 | LocalStorage sync data loss on partial success | Medium | ☐ |
-| R12 | No published-status gate on purchasable subjects | Medium | ☐ |
+| R12 | No published-status gate on purchasable subjects | Medium | ✅ Fixed `8af3a83` |
 | R13 | Non-constant-time HMAC comparison | Low | ☐ |
 | R14 | Orphaned pending orders/transactions on gateway failure | Low | ☐ |
 | R15 | Dead code (PaymentHtmlPages, placeOrder, simulatePayment) | Low | ☐ |
