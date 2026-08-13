@@ -26,6 +26,12 @@
   `/forgot-password` + `/send-verification`.
 - **Fix:** ASP.NET Core rate limiting per-IP/per-email on `login`, `verify-email`, `reset-password`,
   `send-verification`, `forgot-password`, `check-email`; add account lockout after N failures.
+- **Status:** ✅ Fixed in backend repo commit `5e48394` — `AddRateLimiter` + `UseRateLimiter` added
+  to `Program.cs` with two per-IP fixed-window policies (`auth-login` 20/min on login/signup/
+  signup/teacher/refresh/check-email; `auth-otp` 6/min on verify-email/reset-password/
+  send-verification/forgot-password); 429 responses with Arabic message. Per-email account lockout
+  (5 failed logins → 15 min) enforced in `AuthService.Login`. Residual: `check-email` enumeration
+  oracle (R5) still open.
 
 ### R2. (Critical) OTP brute-forceable: 6-digit numeric, unlimited attempts, 10-min window, no attempt tracking
 - **Severity:** Critical
@@ -36,6 +42,11 @@
 - **Impact:** Account takeover (email verification) and password reset by brute force (~5k req/min feasible).
 - **Fix:** CSPRNG generation, 3-5 attempt cap per code, per-user cooldown, larger codes or short
   expiry, constant-time compare.
+- **Status:** ✅ Fixed in backend repo commit `5e48394` — codes generated with `RandomNumberGenerator`
+  (CSPRNG), verified with `CryptographicOperations.FixedTimeEquals` constant-time compare, capped at
+  5 failed attempts per code with automatic code invalidation on exhaustion, 60s per-email resend
+  cooldown on verification + reset senders, plus the per-IP `auth-otp` limiter from R1. Residual:
+  OTP still stored plaintext on `User` and R8 remains partially open (hash-at-rest not implemented).
 
 ### R5. (High) Account-enumeration oracles
 - **Severity:** High
@@ -224,8 +235,8 @@
 
 | ID | Issue | Severity | Status |
 |----|-------|----------|--------|
-| R1 | **No rate limiting / lockout on auth endpoints** | **Critical** | ☐ |
-| R2 | **OTP brute-forceable (6-digit, no attempt cap)** | **Critical** | ☐ |
+| R1 | **No rate limiting / lockout on auth endpoints** | **Critical** | ✅ Fixed `5e48394` |
+| R2 | **OTP brute-forceable (6-digit, no attempt cap)** | **Critical** | ✅ Fixed `5e48394` |
 | R3 | Media endpoints: no enrollment/ownership check (IDOR) | High | ☐ |
 | R4 | Refresh tokens plaintext + no reuse detection | High | ☐ |
 | R5 | Account-enumeration oracles (5 places) | High | ☐ |
