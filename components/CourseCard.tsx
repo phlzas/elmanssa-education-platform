@@ -112,10 +112,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onClick, onEnroll }) =>
         {/* Price */}
         <div className="mb-3">
           {isFree ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-[#4F8751]">مجاني</span>
-              <span className="text-xs text-[#034289]/45 line-through">199 ج.م</span>
-            </div>
+            <span className="text-xl font-black text-[#4F8751]">مجاني</span>
           ) : (
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-black text-[#034289]">

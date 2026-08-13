@@ -171,7 +171,7 @@ export const fetchCourses = async (): Promise<{ data: Course[]; error?: string }
     }
 };
 
-export const fetchCourseById = async (id: number | string): Promise<{ data: Course | null; error?: string }> => {
+export const fetchCourseById = async (id: number | string): Promise<{ data: Course | null; error?: string; statusCode?: number }> => {
     try {
         const json = await getCourse(id);
         const item = json.data ?? json;
@@ -179,7 +179,7 @@ export const fetchCourseById = async (id: number | string): Promise<{ data: Cour
         const data: Course = mapCourseDetail(item);
         return { data };
     } catch (error: any) {
-        console.error('Error fetching course by ID', error);
-        return { data: null, error: error?.message || 'Unknown error' };
+        if (error?.status !== 404) console.error('Error fetching course by ID', error);
+        return { data: null, error: error?.message || 'Unknown error', statusCode: error?.status ?? error?.statusCode };
     }
 };

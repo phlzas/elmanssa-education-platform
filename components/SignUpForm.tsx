@@ -132,8 +132,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ initialAccountType = 'student',
       } else {
         await signup(sanitizedName, email.trim().toLowerCase(), password, accountType, sanitizedPhone, sanitizedNationalId);
       }
-      showToast('تم إنشاء الحساب! يرجى التحقق من بريدك الإلكتروني', 'success');
-      onNavigate('verify-email', { email: email.trim().toLowerCase() });
     } catch (err: any) {
       setError(err?.message || 'حدث خطأ أثناء إنشاء الحساب');
     } finally {

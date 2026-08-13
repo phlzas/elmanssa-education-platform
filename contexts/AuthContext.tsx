@@ -15,8 +15,7 @@ export interface User {
 interface AuthContextType {
     user: User | null;
     isLoggedIn: boolean;
-    login: (email: string, password: string) => Promise<{ requiresEmailVerification?: boolean; email?: string } | void>;
-    loginWithTokens: (data: { token: string; refreshToken: string; userId: string; name: string; email: string; role: string }) => void;
+    login: (email: string, password: string) => Promise<void>;
     signup: (name: string, email: string, password: string, role: AccountType, phoneNumber: string, nationalId: string) => Promise<void>;
     signupTeacher: (payload: {
         name: string; email: string; password: string; nationalId: string;
@@ -102,10 +101,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
-        // Email not verified — return signal to caller, don't throw
-        if (!res.ok && data.requiresEmailVerification) {
-            return { requiresEmailVerification: true, email: data.email || email };
-        }
         if (res.status === 401) throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة. تأكد من صحة بياناتك');
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل تسجيل الدخول'));
         setUser(persistSession(data, email.split('@')[0], email, 'student'));
@@ -120,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (res.status === 400) throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من الحقول المطلوبة'));
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل إنشاء الحساب'));
-        // Don't set user — account needs email verification first
+        setUser(persistSession(data, name, email, role));
     }, []);
 
     const signupTeacher = useCallback(async (payload: {
@@ -136,11 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (res.status === 400) throw new Error(extractErrorMessage(data, 'بيانات غير صحيحة. تحقق من جميع الحقول المطلوبة'));
         if (!res.ok || !data.success) throw new Error(extractErrorMessage(data, 'فشل إنشاء حساب المدرس'));
-        // Don't set user — account needs email verification first
-    }, []);
-
-    const loginWithTokens = useCallback((data: { token: string; refreshToken: string; userId: string; name: string; email: string; role: string }) => {
-        setUser(persistSession(data, data.name, data.email, data.role as AccountType));
+        setUser(persistSession(data, payload.name, payload.email, 'teacher'));
     }, []);
 
     const logout = useCallback(() => {
@@ -162,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, loginWithTokens, signup, signupTeacher, logout, updateUser }}>
+        <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, signup, signupTeacher, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

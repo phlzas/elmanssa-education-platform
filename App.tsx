@@ -24,8 +24,6 @@ const PATH_TO_PAGE: Record<string, Page> = {
   '/watch': 'video-viewer',
   '/teacher': 'teacher-dashboard',
   '/admin': 'admin-dashboard',
-  '/verify-email': 'verify-email',
-  '/forgot-password': 'forgot-password',
 };
 
 const PAGE_TO_PATH: Record<Page, string> = Object.fromEntries(
@@ -73,8 +71,6 @@ const PaymentFailedPage = React.lazy(() => import('./components/PaymentFailedPag
 const VideoViewer = React.lazy(() => import('./components/VideoViewer'));
 const TeacherDashboard = React.lazy(() => import('./components/TeacherDashboard'));
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
-const VerifyEmailPage = React.lazy(() => import('./components/VerifyEmailPage'));
-const ForgotPasswordPage = React.lazy(() => import('./components/ForgotPasswordPage'));
 
 // ── Prefetch helpers ──────────────────────────────────────────────────────────
 // Call these on hover/focus to preload JS chunks + warm the API cache before
@@ -92,7 +88,7 @@ export function prefetchPage(page: string) {
   prefetchMap[page]?.();
 }
 
-export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'payment-failed' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard' | 'verify-email' | 'forgot-password';
+export type Page = 'home' | 'courses' | 'signup' | 'login' | 'course-detail' | 'about' | 'live-stream' | 'ai' | 'pricing' | 'blog' | 'support' | 'privacy' | 'dashboard' | 'contact' | 'instructor' | 'checkout' | 'payment-success' | 'payment-failed' | 'video-viewer' | 'teacher-dashboard' | 'admin-dashboard';
 export type AccountType = 'student' | 'teacher' | 'admin';
 
 const App: React.FC = () => {
@@ -102,7 +98,6 @@ const App: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<number | string | null>(initial.courseId);
   const [initialDashboardTab, setInitialDashboardTab] = useState<string | undefined>(undefined);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
-  const [pendingVerifyEmail, setPendingVerifyEmail] = useState<string>('');
   const { user, isLoggedIn } = useAuth();
   const prevLoggedIn = useRef(isLoggedIn);
 
@@ -166,9 +161,6 @@ const App: React.FC = () => {
   const navigateTo = useCallback((page: Page, payload?: { accountType?: AccountType; courseId?: number | string; tab?: string; email?: string }) => {
     if (page === 'signup' && payload?.accountType) {
       setInitialAccountType(payload.accountType);
-    }
-    if (page === 'verify-email' && payload?.email) {
-      setPendingVerifyEmail(payload.email);
     }
     const courseId = payload?.courseId ?? null;
     if (courseId) setSelectedCourseId(courseId);
@@ -252,10 +244,6 @@ const App: React.FC = () => {
         return <PaymentFailedPage onNavigate={navigateTo} />;
       case 'about':
         return <AboutPage onNavigate={navigateTo} />;
-      case 'verify-email':
-        return <VerifyEmailPage email={pendingVerifyEmail} onNavigate={navigateTo} />;
-      case 'forgot-password':
-        return <ForgotPasswordPage onNavigate={navigateTo} />;
       default:
         return <Hero onNavigate={navigateTo} />;
     }

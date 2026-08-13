@@ -21,6 +21,7 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const { showToast } = useToast();
     const { user } = useAuth();
     const [course, setCourse] = useState<Course | null>(null);
+    const [loadError, setLoadError] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
     const [isProcessing, setIsProcessing] = useState(false);
     const [couponCode, setCouponCode] = useState('');
@@ -36,7 +37,12 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
+        setLoadError(false);
         fetchCourseById(courseId).then(({ data }) => {
+            if (!data) {
+                setLoadError(true);
+                return;
+            }
             setCourse(data);
             window.scrollTo(0, 0);
             if (user) {
@@ -120,6 +126,29 @@ const CheckoutPage: React.FC<CheckoutPageProps> = ({ courseId, onNavigate }) => 
             }
         }
     };
+
+    // Error state — course could not be loaded (missing/invalid id, network failure)
+    if (loadError) {
+        return (
+            <div dir="rtl" className="min-h-screen flex items-center justify-center bg-[#F8FAFA] px-4">
+                <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#ffdad6] flex items-center justify-center">
+                        <svg className="w-8 h-8 text-[#ba1a1a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-[#1a1c1e] mb-2">الدورة غير موجودة</h2>
+                    <p className="text-[#434751] text-sm mb-6">لم نتمكن من تحميل بيانات الدورة. قد تكون محذوفة أو أن الرابط غير صحيح.</p>
+                    <button
+                        onClick={() => onNavigate?.('courses')}
+                        className="px-6 py-3 bg-[#034289] text-white font-semibold rounded-lg hover:bg-[#022a5c] transition-colors duration-200 cursor-pointer"
+                    >
+                        تصفح الدورات
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     // Loading state while course data is being fetched
     if (!course) {

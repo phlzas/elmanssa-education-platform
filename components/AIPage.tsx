@@ -38,9 +38,9 @@ function MarkdownText({ text }: { text: string }) {
         let key = 0;
         while ((m = regex.exec(raw)) !== null) {
             if (m.index > last) parts.push(raw.slice(last, m.index));
-            if (m[2] !== undefined) parts.push(<strong key={key++} className="font-bold text-slate-100">{m[2]}</strong>);
-            else if (m[3] !== undefined) parts.push(<em key={key++} className="italic text-slate-300">{m[3]}</em>);
-            else if (m[4] !== undefined) parts.push(<code key={key++} className="bg-white/[0.08] text-amber-300 px-1.5 py-0.5 rounded text-[12px] font-mono">{m[4]}</code>);
+            if (m[2] !== undefined) parts.push(<strong key={key++} className="font-bold text-[#034289]">{m[2]}</strong>);
+            else if (m[3] !== undefined) parts.push(<em key={key++} className="italic text-[#034289]/80">{m[3]}</em>);
+            else if (m[4] !== undefined) parts.push(<code key={key++} className="bg-[#D2E1D9]/60 text-[#034289] px-1.5 py-0.5 rounded text-[12px] font-mono">{m[4]}</code>);
             last = m.index + m[0].length;
         }
         if (last < raw.length) parts.push(raw.slice(last));
@@ -98,7 +98,7 @@ function MarkdownText({ text }: { text: string }) {
         // Heading-like line (starts with **text:** pattern — Gemini uses this for section headers)
         if (/^\*\*[^*]+\*\*[:\.]?\s*$/.test(trimmed)) {
             elements.push(
-                <p key={i} className="font-bold text-slate-100 text-[15px] mt-3 mb-1">
+                <p key={i} className="font-bold text-[#034289] text-[15px] mt-3 mb-1">
                     {renderInline(trimmed)}
                 </p>
             );
@@ -108,7 +108,7 @@ function MarkdownText({ text }: { text: string }) {
 
         // Regular paragraph line
         elements.push(
-            <p key={i} className="leading-relaxed text-slate-200">
+            <p key={i} className="leading-relaxed text-[#034289]/90">
                 {renderInline(trimmed)}
             </p>
         );
@@ -129,14 +129,14 @@ function AILoadingIndicator({ done }: { done: boolean }) {
     return (
         <div className="flex gap-3" role="status" aria-label="جاري التفكير">
             {/* Avatar slot */}
-            <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#4F8751]/30 to-[#034289]/30" aria-hidden="true">
+            <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-[#4F8751]/20 to-[#034289]/20" aria-hidden="true">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F8751" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
             </div>
 
             {/* Bubble */}
-            <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-white/[0.05] border border-white/[0.07] flex items-center justify-center min-w-[72px] min-h-[48px] relative overflow-hidden">
+            <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-white border border-[#D2E1D9] shadow-sm flex items-center justify-center min-w-[72px] min-h-[48px] relative overflow-hidden">
 
                 {/* Stage 1 — dot grid */}
                 {!done && (
@@ -238,14 +238,14 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
     const isEmpty = messages.length === 0;
 
     return (
-        <div dir="rtl" className="flex flex-col h-screen bg-[#0a1628] font-cairo text-slate-200 overflow-hidden">
+        <div dir="rtl" className="flex flex-col h-screen bg-[#F8FAFA] font-cairo text-[#034289]/90 overflow-hidden">
 
             {/* Header */}
-            <header className="flex-shrink-0 bg-[#0f172a]/95 backdrop-blur border-b border-white/[0.06] px-5 py-3.5 flex items-center justify-between">
+            <header className="flex-shrink-0 bg-white/90 backdrop-blur border-b border-[#034289]/10 px-5 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => onNavigate('home')}
-                        className="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer bg-transparent border-none p-1"
+                        className="text-[#034289]/60 hover:text-[#034289] transition-colors cursor-pointer bg-transparent border-none p-1"
                         aria-label="رجوع للرئيسية"
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -259,10 +259,10 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                             </svg>
                         </div>
                         <div>
-                            <div className="text-sm font-bold text-slate-100 leading-tight">مساعد المنصة الذكي</div>
+                            <div className="text-sm font-bold text-[#034289] leading-tight">مساعد المنصة الذكي</div>
                             <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" aria-hidden="true"></span>
-                                <span className="text-[11px] text-green-400">متاح الآن</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#4F8751] inline-block" aria-hidden="true"></span>
+                                <span className="text-[11px] text-[#4F8751]">متاح الآن</span>
                             </div>
                         </div>
                     </div>
@@ -270,7 +270,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                 {messages.length > 0 && (
                     <button
                         onClick={() => { setMessages([]); setError(''); }}
-                        className="text-slate-500 hover:text-slate-300 text-xs font-cairo cursor-pointer bg-transparent border-none transition-colors"
+                        className="text-[#034289]/50 hover:text-[#034289] text-xs font-cairo cursor-pointer bg-transparent border-none transition-colors"
                     >
                         محادثة جديدة
                     </button>
@@ -282,19 +282,19 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                 <div className="max-w-3xl mx-auto">
                     {isEmpty ? (
                         <div className="flex flex-col items-center justify-center min-h-[55vh] text-center">
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#4F8751]/20 to-[#034289]/20 flex items-center justify-center mb-5 border border-white/[0.06]">
+                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#4F8751]/20 to-[#034289]/20 flex items-center justify-center mb-5 border border-[#D2E1D9]">
                                 <svg className="w-10 h-10 text-[#4F8751]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                                 </svg>
                             </div>
-                            <h2 className="text-xl font-extrabold text-slate-100 mb-2">كيف يمكنني مساعدتك؟</h2>
-                            <p className="text-slate-500 text-sm mb-8 max-w-xs">اسألني عن أي مادة دراسية وسأساعدك في الفهم والشرح</p>
+                            <h2 className="text-xl font-extrabold text-[#034289] mb-2">كيف يمكنني مساعدتك؟</h2>
+                            <p className="text-[#034289]/60 text-sm mb-8 max-w-xs">اسألني عن أي مادة دراسية وسأساعدك في الفهم والشرح</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md">
                                 {SUGGESTIONS.map(s => (
                                     <button
                                         key={s}
                                         onClick={() => send(s)}
-                                        className="text-right px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.08] hover:border-[#4F8751]/40 transition-all duration-200 cursor-pointer font-cairo"
+                                        className="text-right px-4 py-3 rounded-xl bg-white border border-[#D2E1D9] text-[#034289]/80 text-sm hover:bg-[#D2E1D9]/30 hover:border-[#4F8751] transition-all duration-200 cursor-pointer font-cairo shadow-sm"
                                     >
                                         {s}
                                     </button>
@@ -309,8 +309,8 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                                     <div
                                         className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ${
                                             msg.role === 'user'
-                                                ? 'bg-[#034289]/30 text-[#38bdf8]'
-                                                : 'bg-gradient-to-br from-[#4F8751]/30 to-[#034289]/30 text-[#4F8751]'
+                                                ? 'bg-[#034289]/10 text-[#034289]'
+                                                : 'bg-[#4F8751]/15 text-[#4F8751]'
                                         }`}
                                         aria-hidden="true"
                                     >
@@ -329,8 +329,8 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                                     <div
                                         className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                                             msg.role === 'user'
-                                                ? 'bg-[#034289]/40 text-slate-100 rounded-tr-sm whitespace-pre-wrap'
-                                                : 'bg-white/[0.05] border border-white/[0.07] text-slate-200 rounded-tl-sm'
+                                                ? 'bg-gradient-to-br from-[#034289] to-[#0459b7] text-white rounded-tr-sm whitespace-pre-wrap'
+                                                : 'bg-white border border-[#D2E1D9] text-[#034289]/90 rounded-tl-sm shadow-sm'
                                         }`}
                                     >
                                         {msg.role === 'user'
@@ -347,7 +347,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                             )}
 
                             {error && (
-                                <div role="alert" className="text-center text-red-400 text-sm py-2 px-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                                <div role="alert" className="text-center text-red-600 text-sm py-2 px-4 bg-red-50 rounded-xl border border-red-200">
                                     {error}
                                 </div>
                             )}
@@ -358,7 +358,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
             </main>
 
             {/* Input bar */}
-            <div className="flex-shrink-0 bg-[#0a1628]/95 backdrop-blur border-t border-white/[0.06] px-4 py-4">
+            <div className="flex-shrink-0 bg-white/95 backdrop-blur border-t border-[#034289]/10 px-4 py-4">
                 <div className="max-w-3xl mx-auto flex gap-3 items-end">
                     <div className="flex-1">
                         <textarea
@@ -375,7 +375,7 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                             rows={1}
                             disabled={loading}
                             aria-label="رسالتك للمساعد الذكي"
-                            className="font-cairo w-full px-4 py-3 bg-white/[0.05] border border-white/10 rounded-2xl text-slate-200 text-sm outline-none focus:border-[#4F8751]/50 transition-colors duration-150 resize-none disabled:opacity-50 placeholder-slate-600"
+                            className="font-cairo w-full px-4 py-3 bg-[#F8FAFA] border border-[#D2E1D9] rounded-2xl text-[#034289] text-sm outline-none focus:border-[#4F8751] focus:ring-2 focus:ring-[#4F8751]/30 transition-colors duration-150 resize-none disabled:opacity-50 placeholder-[#034289]/40"
                             style={{ minHeight: '48px', maxHeight: '140px' }}
                         />
                     </div>
@@ -383,14 +383,14 @@ const AIPage: React.FC<AIPageProps> = ({ onNavigate }) => {
                         onClick={() => send(input)}
                         disabled={!input.trim() || loading}
                         aria-label="إرسال الرسالة"
-                        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F8751] to-[#034289] flex items-center justify-center flex-shrink-0 cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-green-900/30"
+                        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4F8751] to-[#034289] flex items-center justify-center flex-shrink-0 cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity duration-200 shadow-lg shadow-[#034289]/25"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
                             <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </button>
                 </div>
-                <p className="text-center text-[11px] text-slate-600 mt-2 font-cairo">
+                <p className="text-center text-[11px] text-[#034289]/50 mt-2 font-cairo">
                     مدعوم بـ Gemini AI — للأغراض التعليمية فقط
                 </p>
             </div>

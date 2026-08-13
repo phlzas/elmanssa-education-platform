@@ -51,12 +51,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     setError('');
     setIsLoading(true);
     try {
-      const result = await login(sanitizedEmail, password);
-      if (result && result.requiresEmailVerification) {
-        showToast('يرجى تفعيل بريدك الإلكتروني أولاً. تم إرسال رمز التحقق إلى بريدك.', 'warning');
-        onNavigate('verify-email', { email: result.email || sanitizedEmail });
-        return;
-      }
+      await login(sanitizedEmail, password);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'حدث خطأ أثناء تسجيل الدخول';
@@ -153,13 +148,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 <label htmlFor="password" className="block text-sm font-semibold text-[#002c61]">
                   كلمة المرور
                 </label>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('forgot-password')}
-                  className="text-xs text-[#034289] hover:text-[#002c61] font-medium cursor-pointer transition-colors duration-200 underline-offset-2 hover:underline"
-                >
-                  نسيت كلمة المرور
-                </button>
               </div>
               <div className="relative">
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737782]" aria-hidden="true">

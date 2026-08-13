@@ -19,6 +19,7 @@ interface CourseDetailPageProps {
 const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigate }) => {
     const [course, setCourse] = useState<Course | null>(null);
     const [loadError, setLoadError] = useState(false);
+    const [notFound, setNotFound] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'curriculum'>('overview');
     const [isLoadingInquiry, setIsLoadingInquiry] = useState(false);
     const { user } = useAuth();
@@ -26,8 +27,14 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
 
     useEffect(() => {
         setLoadError(false);
+        setNotFound(false);
         fetchCourseById(courseId)
-            .then(({ data }) => {
+            .then(({ data, statusCode }) => {
+                if (!data) {
+                    setNotFound(statusCode === 404);
+                    setLoadError(true);
+                    return;
+                }
                 setCourse(data);
                 window.scrollTo(0, 0);
             })
@@ -74,14 +81,29 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId, onNavigat
                     </svg>
                 </div>
                 <div className="text-center">
-                    <h2 className="text-xl font-bold text-[#1a1c1e] mb-2">تعذّر تحميل الدورة</h2>
-                    <p className="text-[#434751] text-sm mb-6">يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.</p>
-                    <button
-                        onClick={() => { setLoadError(false); fetchCourseById(courseId).then(({ data }) => setCourse(data)).catch(() => setLoadError(true)); }}
-                        className="px-6 py-3 bg-[#034289] text-white font-semibold rounded-lg hover:bg-[#022a5c] transition-colors duration-200 cursor-pointer"
-                    >
-                        إعادة المحاولة
-                    </button>
+                    <h2 className="text-xl font-bold text-[#1a1c1e] mb-2">
+                        {notFound ? 'الدورة غير موجودة' : 'تعذّر تحميل الدورة'}
+                    </h2>
+                    <p className="text-[#434751] text-sm mb-6">
+                        {notFound
+                            ? 'لم نتمكن من العثور على هذه الدورة. ربما تم حذفها أو أن الرابط غير صحيح.'
+                            : 'يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'}
+                    </p>
+                    {notFound ? (
+                        <button
+                            onClick={() => onNavigate && onNavigate('courses')}
+                            className="px-6 py-3 bg-[#034289] text-white font-semibold rounded-lg hover:bg-[#022a5c] transition-colors duration-200 cursor-pointer"
+                        >
+                            تصفح الدورات
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => { setLoadError(false); setNotFound(false); fetchCourseById(courseId).then(({ data, statusCode }) => { if (!data) { setNotFound(statusCode === 404); setLoadError(true); } else { setCourse(data); } }).catch(() => setLoadError(true)); }}
+                            className="px-6 py-3 bg-[#034289] text-white font-semibold rounded-lg hover:bg-[#022a5c] transition-colors duration-200 cursor-pointer"
+                        >
+                            إعادة المحاولة
+                        </button>
+                    )}
                 </div>
             </div>
         );
