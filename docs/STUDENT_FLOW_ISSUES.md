@@ -230,6 +230,10 @@
   front-end paywall bypass staging ground.
 - **Fix:** Add `s.Status == "published"` (and consider enrollment-gated content endpoints for
   logged-in students).
+- **Status:** ✅ Fixed `fbc4d68` — `GetSubjectById` now returns `published` subjects, plus any subject
+  the authenticated caller is enrolled in (so enrolled students keep access after a teacher unpublishes).
+  Anonymous/unauthenticated callers only ever see `published`. The `StoredFileName`/stream-URL leak is
+  closed for drafts; `Status` still defaults to `"draft"` in the mapping but unreachable for drafts now.
 
 ### BE4. (High) HLS signed-token vs JWT query-param conflict breaks HLS streaming
 - **Severity:** High
@@ -417,7 +421,7 @@
 | F16 | Fabricated default duration "10:00" | Low | ☐ |
 | BE1 | **Webhook GET enrollment bypass (no HMAC verification)** | **Critical** | ☐ |
 | BE2 | **No enrollment/ownership check on media endpoints (IDOR)** | **Critical** | ☐ |
-| BE3 | Draft subjects public via GetSubjectById | High | ☐ |
+| BE3 | Draft subjects public via GetSubjectById | High | ✅ Fixed `fbc4d68` |
 | BE4 | HLS signed-token vs JWT query-param conflict | High | ✅ Fixed `4d26050` |
 | BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ✅ Fixed `e7e3dfb` |
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
