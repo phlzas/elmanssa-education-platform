@@ -368,6 +368,9 @@
 - **Location:** `Controllers/StudentController.cs:27-30` (`Guid.Parse(... ?? "")`). MediaController
   (466-472) and PaymentController (36-38) handle the missing claim differently.
 - **Fix:** `TryParse` → Unauthorized.
+- **Status:** ✅ Fixed `627534e` — `GetUserId()` now uses `Guid.TryParse` and throws
+  `UnauthorizedAccessException("User not authenticated")` on a missing/invalid claim; all four
+  actions (enrollments, progress GET/POST, enroll-free) return 401 instead of 500.
 
 ### BE13. (Low) Hardcoded WhatsApp number + no inquiry tracking
 - **Severity:** Low
@@ -448,7 +451,7 @@
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ✅ Fixed `4e0db9a` |
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ✅ Fixed `dd44267` |
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ✅ Fixed `182b851` |
-| BE12 | GetUserId throws → 500 | Low | ☐ |
+| BE12 | GetUserId throws → 500 | Low | ✅ Fixed `627534e` |
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ☐ |
 | BE14 | BotDetection bypass / incomplete coverage | Low | ☐ |
 | BE15 | Enrollment/stat responses lack subject context | Low | ☐ |
