@@ -330,6 +330,11 @@
   title match** — fragile with duplicate titles.
 - **Impact:** Duplicate-title subjects map legacy enrollments to the wrong subject in progress.
 - **Fix:** Remove the legacy Course/OrderRepository stack or complete a real ID-based migration.
+- **Status:** ✅ Fixed `4e0db9a` — deleted `CourseService`/`CourseRepository`/`OrderRepository` (+ interfaces),
+  removed their DI registrations from `Program.cs`, and hardened both title matches
+  (`StudentService.GetProgressAsync`, `AdminController.MigrateEnrollments`) to only map/skip when a
+  title is **unique** among subjects; ambiguous duplicate-title enrollments are skipped and reported.
+  The `AuthService.cs:245-247` citation was stale (RefreshToken body, no legacy Course logic).
 
 ### BE10. (Medium) Coupon validation gaps
 - **Severity:** Medium
@@ -431,7 +436,7 @@
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ✅ Fixed `8af3a83` |
-| BE9 | Dead legacy Course layer + title-based migration | Medium | ☐ |
+| BE9 | Dead legacy Course layer + title-based migration | Medium | ✅ Fixed `4e0db9a` |
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ☐ |
 | BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ☐ |
 | BE12 | GetUserId throws → 500 | Low | ☐ |
