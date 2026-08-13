@@ -412,6 +412,11 @@
 - **Impact:** Races (BE6) and missed paths (BE8) drift it.
 - **Fix:** Derive from `Enrollments.CountAsync()` or update within the same transaction/unique
   constraint as the enrollment insert.
+- **Status:** ✅ Fixed `b47f756`. Added `Subject.Enrollments` nav and derived the count everywhere
+  (`SubjectsController` projections/ordering, `AdminController.GetCourses`, `TeacherService` via a
+  grouped query to avoid N+1); removed the manual increments/decrements in `PaymobService` webhook,
+  `StudentController.EnrollFree`, and `AdminController.EnrollStudent/DeleteEnrollment`. Nav-only
+  migration `AddSubjectEnrollmentsNavigation`. Legacy `Course.StudentsCount` untouched (separate entity).
 
 ---
 
@@ -466,4 +471,5 @@
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ✅ Fixed `a6c1e09` |
 | BE14 | BotDetection bypass / incomplete coverage | Low | ✅ Fixed `9833d5c` |
 | BE15 | Enrollment/stat responses lack subject context | Low | ✅ Fixed `c48aeb4` |
+| BE16 | StudentsCount manually-maintained denormalized counter | Low | ✅ Fixed `b47f756` |
 | BE16 | StudentsCount denormalized counter drifts | Low | ☐ |
