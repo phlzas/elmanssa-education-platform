@@ -244,6 +244,13 @@
   (needs runtime confirmation, but code paths are mutually exclusive).
 - **Fix:** Use a distinct query param (e.g., `sig`) for the media HMAC token; keep `token` for JWT
   (or drop the JWT query-token feature and rely on the Authorization header); align the frontend param name.
+- **Status:** ✅ Fixed `4d26050` — all three HLS endpoints (`GetHlsPlaylist`, `GetHlsSegment`,
+  `GetHlsKey`) now read the HMAC token from `?sig=` (backend) and the m3u8 segment rewrite appends
+  `?sig=`; the frontend `getHlsUrl` (`api/media.api.ts`) was aligned from `?st=` to `?sig=`.
+  `token` remains reserved for JWT via `OnMessageReceived`. The JWT still rides the
+  `Authorization: Bearer` header on hls.js requests (`xhrSetup`), so `GetUserId()` resolves.
+  Residual: the native Apple HLS fallback (`video.src = hlsUrl`, no header) still has no JWT — see
+  `VIDEO_PIPELINE_ISSUES.md` B2/S1.
 
 ### BE5. (High) Progress tampering: no enrollment guard, no 0-100 clamp, Completed spoofable
 - **Severity:** High
@@ -403,7 +410,7 @@
 | BE1 | **Webhook GET enrollment bypass (no HMAC verification)** | **Critical** | ☐ |
 | BE2 | **No enrollment/ownership check on media endpoints (IDOR)** | **Critical** | ☐ |
 | BE3 | Draft subjects public via GetSubjectById | High | ☐ |
-| BE4 | HLS signed-token vs JWT query-param conflict | High | ☐ |
+| BE4 | HLS signed-token vs JWT query-param conflict | High | ✅ Fixed `4d26050` |
 | BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ☐ |
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
