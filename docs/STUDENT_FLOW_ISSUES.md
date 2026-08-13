@@ -263,6 +263,14 @@
 - **Fix:** Verify enrollment (via Lecture→Level→Subject) before upsert; `Math.Clamp(ProgressPct, 0, 100)`;
   derive `Completed` server-side (e.g., `ProgressPct >= 100`); scope `completedLectures` to enrolled
   subjects; add a unique index `(UserId, LectureId)`.
+- **Status:** ✅ Fixed `e7e3dfb` — `UpdateProgressAsync` now resolves the lecture's subject
+  (Lecture→Level→Subject) and rejects non-enrolled users (`NotEnrolled` → 403 `NOT_ENROLLED`) and
+  unknown lectures (`LectureNotFound` → 404); `ProgressPct` is clamped to 0-100 and `Completed` is
+  derived server-side, ignoring the client flag; `completedLectures` (and thus `OverallProgress`) is
+  scoped to enrolled subjects; `[Range(0,100)]` added to the DTO; unique index
+  `IX_LectureProgress_UserId_LectureId` (migration `20260813094140`, with dedupe SQL keeping the
+  earliest row per user+lecture). Note: `Completed` derives at `pct >= 90` (not the doc example of
+  `>= 100`) to preserve the frontend's completion convention (`SecureVideoPlayer.tsx:126`).
 
 ### BE6. (High) Double-enrollment race (TOCTOU) on all check-then-insert paths
 - **Severity:** High
@@ -411,7 +419,7 @@
 | BE2 | **No enrollment/ownership check on media endpoints (IDOR)** | **Critical** | ☐ |
 | BE3 | Draft subjects public via GetSubjectById | High | ☐ |
 | BE4 | HLS signed-token vs JWT query-param conflict | High | ✅ Fixed `4d26050` |
-| BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ☐ |
+| BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ✅ Fixed `e7e3dfb` |
 | BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ✅ Fixed `679750b` |
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ☐ |
