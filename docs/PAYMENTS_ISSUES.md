@@ -79,6 +79,13 @@
 - **Fix:** DB unique index on `(UserId, SubjectId)`; make the webhook idempotent on
   `MerchantOrderId`/`PaymobTransactionId` (skip if already `success`); wrap status transitions to only
   move `pending → terminal` (never downgrade completed).
+- **Status:** 🟡 Partially fixed `c9c247b` — DB unique filtered index
+  `IX_Enrollments_UserId_SubjectId` + dedupe SQL + `DbUpdateException` → already-enrolled handled in
+  `EnrollFree`, admin enroll, and webhook enrollment insert (webhook payment status now persists
+  before the enrollment save, so a duplicate-enrollment race no longer rolls back a successful
+  payment). Residuals: webhook idempotency on `MerchantOrderId`/`PaymobTransactionId` (skip if
+  already `success`) and the pending→terminal status-transition wrap (no downgrade of completed
+  orders) are still open.
 
 ### R12. (Medium) No published-status gate on purchasable subjects
 - **Severity:** Medium
@@ -238,7 +245,7 @@
 | R3 | No refund/void/pending handling | High | ☐ |
 | R4 | Teacher accounting tampering (amounts, PKs, destructible rows) | High | ☐ |
 | R5 | Live secrets in not-gitignored appsettings.json | High | ☐ |
-| R6 | No webhook idempotency / enrollment unique index (race) | High | ☐ |
+| R6 | No webhook idempotency / enrollment unique index (race) | High | 🟡 Partial `c9c247b` |
 | R7 | Hardcoded production URLs + WhatsApp number | Medium | ☐ |
 | R8 | Post-payment dead end → Hero + fabricated order number | Medium | ☐ |
 | R9 | Coupon flow broken + no discount cap (negative amount) | Medium | ☐ |

@@ -267,6 +267,10 @@
 - **Impact:** Duplicate enrollments, double-charge accounting, StudentsCount drift.
 - **Fix:** Unique filtered index `IX_Enrollments_UserId_SubjectId` on `(UserId, SubjectId) WHERE
   SubjectId IS NOT NULL`; catch `DbUpdateException` and return `ALREADY_ENROLLED`.
+- **Status:** ✅ Fixed `c9c247b` (unique filtered index `IX_Enrollments_UserId_SubjectId` on
+  `(UserId, SubjectId) WHERE "SubjectId" IS NOT NULL` + dedupe SQL in migration; `DbUpdateException`
+  → `ALREADY_ENROLLED` in `EnrollFree`, admin enroll, and webhook enrollment insert). Residuals:
+  R6 webhook idempotency + pending→terminal transition wrap still open — tracked in PAYMENTS_ISSUES.md.
 
 ### BE7. (Medium) Broken "free" guard + no published check in enroll-free
 - **Severity:** Medium
@@ -398,7 +402,7 @@
 | BE3 | Draft subjects public via GetSubjectById | High | ☐ |
 | BE4 | HLS signed-token vs JWT query-param conflict | High | ☐ |
 | BE5 | Progress tampering (no enrollment guard, no clamp, spoofable) | High | ☐ |
-| BE6 | Double-enrollment race (no unique index) | High | ☐ |
+| BE6 | Double-enrollment race (no unique index) | High | ✅ Fixed `c9c247b` |
 | BE7 | Broken "free" guard + no published check in enroll-free | Medium | ☐ |
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ☐ |
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ☐ |
