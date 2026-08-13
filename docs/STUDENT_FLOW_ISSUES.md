@@ -359,6 +359,9 @@
   loaded without published filter at 37)
 - **Impact:** Maintenance risk; if someone "fixes" the endpoint, the auto-enroll becomes a payment bypass.
 - **Fix:** Delete `OrderService.CreateOrderAsync` + the POST route, or harden before re-enabling.
+- **Status:** ✅ Fixed `182b851` — deleted `OrderService.CreateOrderAsync` (+ interface declaration),
+  the `OrderController` POST `/orders` 403 stub, and the now-unused `OrderCreateDTO`. The dead
+  auto-enrollment branch (would have enrolled on unpaid pending orders) no longer exists.
 
 ### BE12. (Low) `GetUserId()` in StudentController throws on missing claim → 500
 - **Severity:** Low
@@ -444,7 +447,7 @@
 | BE8 | Paid paths don't increment StudentsCount; draft purchasable | Medium | ✅ Fixed `8af3a83` |
 | BE9 | Dead legacy Course layer + title-based migration | Medium | ✅ Fixed `4e0db9a` |
 | BE10 | Coupon validation gaps (MaxUses/binding/cap) | Medium | ✅ Fixed `dd44267` |
-| BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ☐ |
+| BE11 | Dead/disabled purchase flow (auto-enroll if revived) | Low | ✅ Fixed `182b851` |
 | BE12 | GetUserId throws → 500 | Low | ☐ |
 | BE13 | Hardcoded WhatsApp number + no inquiry tracking | Low | ☐ |
 | BE14 | BotDetection bypass / incomplete coverage | Low | ☐ |
