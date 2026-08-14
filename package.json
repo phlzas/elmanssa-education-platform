@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:og": "node scripts/generate-course-og.mjs",
+    "build:full": "npm run build && npm run build:og",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
