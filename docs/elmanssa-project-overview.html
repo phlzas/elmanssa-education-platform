@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Elmanssa Education Platform - Comprehensive Project Overview</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        line-height: 1.6;
+        color: #1f2937;
+        background: #ffffff;
+        margin: 0;
+        padding: 0;
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 32px 40px 48px;
+      }
+
+      h1, h2, h3 {
+        color: #0f172a;
+        margin-top: 1.2em;
+        margin-bottom: 0.4em;
+      }
+
+      h1 {
+        font-size: 30px;
+        border-bottom: 3px solid #1d4ed8;
+        padding-bottom: 12px;
+      }
+
+      h2 {
+        font-size: 22px;
+        margin-top: 1.8em;
+      }
+
+      h3 {
+        font-size: 17px;
+        color: #1e3a8a;
+      }
+
+      p, li {
+        font-size: 14px;
+      }
+
+      ul, ol {
+        padding-left: 22px;
+      }
+
+      .meta {
+        margin-top: 14px;
+        font-size: 13px;
+        color: #475569;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+        gap: 20px;
+        margin-top: 18px;
+      }
+
+      .card {
+        border: 1px solid #dbe3f0;
+        border-left: 5px solid #2563eb;
+        background: #f8fbff;
+        padding: 14px 16px;
+        border-radius: 8px;
+      }
+
+      .label {
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+
+      th, td {
+        border: 1px solid #dbe3f0;
+        padding: 8px 10px;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        background: #eff6ff;
+      }
+
+      .callout {
+        background: #fef3c7;
+        border: 1px solid #f9d976;
+        border-left: 5px solid #d97706;
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-top: 18px;
+      }
+
+      .footer {
+        margin-top: 36px;
+        border-top: 2px solid #cbd5e1;
+        padding-top: 12px;
+        font-size: 12px;
+        color: #475569;
+      }
+
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Elmanssa Education Platform</h1>
+      <div class="meta">
+        Comprehensive technology and project overview for the frontend and backend repositories.
+      </div>
+
+      <p>
+        Elmanssa is an Arabic-first, RTL online learning platform designed for the Arabic-speaking market,
+        with a strong focus on students, teachers, and administrators. The project includes a rich frontend
+        experience with a .NET backend API, secure media handling, role-based access, AI tutoring, and payment flows.
+      </p>
+
+      <div class="cards">
+        <div class="card">
+          <div class="label">Frontend repository</div>
+          <div>phlzas/elmanssa-education-platform</div>
+          <div>TypeScript: 96.8%</div>
+          <div>React 19 + Vite + Tailwind</div>
+        </div>
+        <div class="card">
+          <div class="label">Backend repository</div>
+          <div>phlzas/Elmansa-api</div>
+          <div>C#: 100%</div>
+          <div>ASP.NET Core 8 REST API</div>
+        </div>
+      </div>
+
+      <h2>1. Product vision and business scope</h2>
+      <p>
+        The platform is not a simple course catalog. It is an end-to-end learning ecosystem. Students can browse courses,
+        enroll, complete lessons, track progress, and access AI tutoring. Teachers can publish content, manage curriculum,
+        review students, and monitor earnings. Administrators can oversee courses, users, payments, accounting, media, and platform-wide operations.
+      </p>
+      <p>
+        The product targets students in Egypt and Saudi Arabia, with Arabic-first UX and language-specific content flows. This includes RTL layout,
+        Arabic marketplace behavior, support for Arabic education paths, and a strong focus on local usage patterns and market requirements.
+      </p>
+
+      <h2>2. Technology stack</h2>
+
+      <h3>Frontend stack</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Technology</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>UI</td><td>React 19 + TypeScript</td></tr>
+          <tr><td>Build tooling</td><td>Vite 6 + @vitejs/plugin-react</td></tr>
+          <tr><td>Styling</td><td>Tailwind CSS 3 with custom Arabic-first design tokens</td></tr>
+          <tr><td>State</td><td>React Context API and custom hooks</td></tr>
+          <tr><td>Routing</td><td>Custom URL/page mapping with history.pushState and popstate</td></tr>
+          <tr><td>Video playback</td><td>hls.js + Plyr + secure HLS streaming support</td></tr>
+          <tr><td>Payments</td><td>Paymob integration via backend endpoints</td></tr>
+          <tr><td>AI assistant</td><td>Google Gemini through backend API and front-end chat UI</td></tr>
+          <tr><td>Testing</td><td>Vitest + Testing Library + jsdom</td></tr>
+          <tr><td>Deployment</td><td>Vercel static hosting with SPA rewrites and API proxy handling</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Backend stack</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Technology</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Framework</td><td>ASP.NET Core Web API</td></tr>
+          <tr><td>Runtime</td><td>.NET 8.0</td></tr>
+          <tr><td>Language</td><td>C# 12</td></tr>
+          <tr><td>ORM</td><td>Entity Framework Core with SQL Server support</td></tr>
+          <tr><td>Auth</td><td>ASP.NET Core Identity + JWT bearer tokens + refresh token support</td></tr>
+          <tr><td>Docs</td><td>Swagger / OpenAPI integration</td></tr>
+          <tr><td>AI</td><td>Google Gemini generative API</td></tr>
+          <tr><td>Email</td><td>SMTP-based confirmation and password reset communications</td></tr>
+          <tr><td>Security</td><td>Rate limiting, quota tracking, request throttling, and abuse controls</td></tr>
+        </tbody>
+      </table>
+
+      <h2>3. Frontend architecture and product experience</h2>
+      <p>
+        The frontend is built as a single-page application with a lightweight custom routing layer instead of a traditional router library.
+        This keeps navigation fast and allows deep linking to course pages, dashboard views, admin modules, and content-specific routes.
+      </p>
+      <ul>
+        <li>Role-based dashboards for students, teachers, and admins.</li>
+        <li>Course marketplace with search, filters, listing pages, ratings, and rich detail pages.</li>
+        <li>Secure media learning experience with HLS streaming and video player controls.</li>
+        <li>AI study assistant UI with conversation history and markdown rendering.</li>
+        <li>Checkout flow and payment handling through backend service integration.</li>
+        <li>Marketing pages for home, about, pricing, support, privacy, blog, and instructor profiles.</li>
+      </ul>
+      <p>
+        The application also includes route-level code splitting, cache strategies, input sanitization, XSS mitigation, and open-graph preview generation for course sharing.
+      </p>
+
+      <div class="callout">
+        This is not a generic demo app. It is built to feel like a real educational platform with market-facing pages, business workflows, and authenticated modules.
+      </div>
+
+      <h2>4. Backend architecture and API design</h2>
+      <p>
+        The backend is a layered ASP.NET Core service designed around clear separation of concerns. Controllers handle HTTP requests,
+        services contain the business logic, repositories manage data access, and the data layer coordinates EF Core models and SQL Server persistence.
+      </p>
+      <ul>
+        <li>Authentication and authorization through ASP.NET Core Identity.</li>
+        <li>JWT access tokens and refresh tokens for session management.</li>
+        <li>Course CRUD with publish, draft, search, and category filtering.</li>
+        <li>Enrollment tracking with lesson progress, completion states, and drop flow.</li>
+        <li>AI usage tracking, quotas, and token-based cost awareness.</li>
+        <li>Swagger UI available for interactive API testing in development.</li>
+      </ul>
+      <p>
+        The backend also includes supporting patterns such as generic repository abstractions, unit-of-work coordination,
+        DTOs for API contracts, configuration classes for email, AI, and rate limits, and structured environment-based setup.
+      </p>
+
+      <h2>5. Core functional modules</h2>
+
+      <h3>Student experience</h3>
+      <ul>
+        <li>Browse, search, and filter courses.</li>
+        <li>Enroll in subjects and manage learning progress.</li>
+        <li>Track per-lecture completion and watch-time.</li>
+        <li>Access AI-assisted study support based on curriculum context.</li>
+        <li>View notifications and course-related information in the dashboard.</li>
+      </ul>
+
+      <h3>Teacher experience</h3>
+      <ul>
+        <li>Create and manage course structure and nested curriculum.</li>
+        <li>Publish or draft content with administrative control.</li>
+        <li>Review student rosters and engagement metrics.</li>
+        <li>Monitor personal accounting and revenue data.</li>
+        <li>Manage course content and education delivery.</li>
+      </ul>
+
+      <h3>Admin experience</h3>
+      <ul>
+        <li>Manage students, teachers, and platform content.</li>
+        <li>Open oversight over orders, enrollments, streams, accounting, and users.</li>
+        <li>Export accounting or platform data for review.</li>
+        <li>Manage platform-level controls and business operations.</li>
+      </ul>
+
+      <h2>6. Security and reliability</h2>
+      <p>
+        Security is treated as a core product requirement. The platform includes JWT authentication, route-level access checks,
+        refresh-token rotation, email verification, and structured request validation. The backend uses quotas, request throttling,
+        and rate limiting to guard against misuse and excessive AI consumption.
+      </p>
+      <p>
+        The frontend also uses sanitization and protection patterns for user-provided content and dynamic output, and it is designed
+        for secure deployment in a real production environment with Vercel hosting and backend API integration.
+      </p>
+
+      <h2>7. Media, payments, and AI</h2>
+      <ul>
+        <li>Video learning includes protected streaming flows and signed asset access.</li>
+        <li>Media upload pipeline is prepared for compression and transcoding workflows.</li>
+        <li>Payments flow through Paymob-based checkout actions and order handling.</li>
+        <li>AI study assistant is connected to Gemini and scoped to educational support.</li>
+        <li>Usage quotas ensure fair and measurable AI consumption per user.</li>
+      </ul>
+
+      <h2>8. Deployment and environment</h2>
+      <p>
+        The frontend is deployed through Vercel, while the API is hosted on a .NET backend environment. Local development commonly runs the frontend at localhost:3000
+        and the API at a backend port such as localhost:5299 or similar, with Vite dev-server proxying requests to the API. Production deployment uses environment configuration
+        for the API base URL and public-facing origin variables. The platform is designed to support a real SaaS-style lifecycle.
+      </p>
+
+      <h2>9. Summary</h2>
+      <p>
+        The Elmanssa ecosystem is a mature educational platform combining a modern React frontend, a scalable ASP.NET Core backend,
+        secure authentication, rich media and video support, AI tutoring, payments, role-based dashboards, and a strong Arabic-first UX.
+        It is designed not only as a course website but as a full learning operation system for students, teachers, and administrators.
+      </p>
+
+      <div class="footer">
+        Project overview generated from the repository descriptions and documentation for the Elmanssa frontend and backend projects.
+      </div>
+    </div>
+  </body>
+</html>
